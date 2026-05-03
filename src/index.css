@@ -8,3 +8,9 @@ body {
   background: linear-gradient(135deg, #0f0c29, #1a1040, #24243e);
   min-height: 100vh;
 }
+
+@media (max-width: 768px) {
+  .sidebar-mobile {
+    display: none;
+  }
+}
