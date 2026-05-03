@@ -5,6 +5,7 @@ import Login from './pages/Login'
 import Dashboard from './pages/Dashboard'
 import Productos from './pages/Productos'
 import Ventas from './pages/Ventas'
+import Perfil from './pages/Perfil'
 import Layout from './components/Layout'
 
 export default function App() {
@@ -36,6 +37,7 @@ export default function App() {
         <Route path="/" element={<Dashboard />} />
         <Route path="/productos" element={<Productos />} />
         <Route path="/ventas" element={<Ventas />} />
+        <Route path="/perfil" element={<Perfil session={session} />} />
       </Route>
     </Routes>
   )

@@ -1,6 +1,6 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
-import { LayoutDashboard, Package, ShoppingCart, LogOut } from 'lucide-react'
+import { LayoutDashboard, Package, ShoppingCart, LogOut, UserCircle } from 'lucide-react'
 import { Toaster } from 'react-hot-toast'
 import { useEffect, useState } from 'react'
 
@@ -23,6 +23,7 @@ export default function Layout({ session }) {
     { to: '/', label: 'Dashboard', icon: <LayoutDashboard size={15} /> },
     { to: '/productos', label: 'Productos', icon: <Package size={15} /> },
     { to: '/ventas', label: 'Ventas', icon: <ShoppingCart size={15} /> },
+    { to: '/perfil', label: 'Mi perfil', icon: <UserCircle size={15} /> }
   ]
 
   return (
