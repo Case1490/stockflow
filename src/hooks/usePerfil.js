@@ -11,14 +11,29 @@ export function usePerfil(userId) {
   }, [userId])
 
   const fetchPerfil = async () => {
-    const { data } = await supabase
-      .from('perfiles')
-      .select('*')
-      .eq('id', userId)
-      .single()
-    setPerfil(data)
-    setLoading(false)
+  const { data: perfilData } = await supabase
+    .from('perfiles')
+    .select('*')
+    .eq('id', userId)
+    .single()
+
+  if (perfilData) {
+    setPerfil(perfilData)
+  } else {
+    // Si no existe perfil, crearlo con los datos del registro
+    const { data: { user } } = await supabase.auth.getUser()
+    const meta = user?.user_metadata || {}
+    const nuevo = {
+      id: userId,
+      nombre: meta.nombre || '',
+      apellido: meta.apellido || '',
+      avatar_url: null
+    }
+    await supabase.from('perfiles').insert(nuevo)
+    setPerfil(nuevo)
   }
+  setLoading(false)
+}
 
   const actualizarPerfil = async (updates) => {
     const { error } = await supabase
