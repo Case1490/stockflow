@@ -6,7 +6,7 @@ import toast from 'react-hot-toast'
 const glass = { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }
 const inputStyle = { width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '12px', padding: '9px 14px', fontSize: '13px', color: '#fff', outline: 'none' }
 
-export default function Productos() {
+export default function Productos({ esAdmin = false }) {
   const [productos, setProductos] = useState([])
   const [loading, setLoading] = useState(true)
   const [modalOpen, setModalOpen] = useState(false)
@@ -98,11 +98,13 @@ export default function Productos() {
               {productosFiltrados.length} de {productos.length} productos
             </p>
           </div>
-          <button onClick={() => abrirModal()}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium text-white"
-            style={{ background: 'linear-gradient(135deg, #0d9488, #2dd4bf)' }}>
-            <Plus size={14} /> Nuevo producto
-          </button>
+          {esAdmin && (
+            <button onClick={() => abrirModal()}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium text-white"
+              style={{ background: 'linear-gradient(135deg, #0d9488, #2dd4bf)' }}>
+              <Plus size={14} /> Nuevo producto
+            </button>
+          )}
         </div>
 
         {/* Barra de búsqueda y filtros */}
@@ -195,16 +197,19 @@ export default function Productos() {
                   <p className="font-semibold" style={{ color: '#2dd4bf' }}>S/ {Number(p.precio).toFixed(2)}</p>
                   <p className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>{p.stock} en stock</p>
                 </div>
-                <div className="flex gap-2 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-                  <button onClick={() => abrirModal(p)} className="flex-1 flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-lg transition-all"
-                    style={{ color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.05)' }}>
-                    <Pencil size={11} /> Editar
-                  </button>
-                  <button onClick={() => eliminarProducto(p.id)} className="flex-1 flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-lg transition-all"
-                    style={{ color: '#fb7185', background: 'rgba(251,113,133,0.08)' }}>
-                    <Trash2 size={11} /> Eliminar
-                  </button>
-                </div>
+                {esAdmin && (
+                  <div className="flex gap-2 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
+                    <button onClick={() => abrirModal(p)} className="flex-1 flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-lg transition-all"
+                      style={{ color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.05)' }}>
+                      <Pencil size={11} /> Editar
+                    </button>
+                    <button onClick={() => eliminarProducto(p.id)} className="flex-1 flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-lg transition-all"
+                      style={{ color: '#fb7185', background: 'rgba(251,113,133,0.08)' }}>
+                      <Trash2 size={11} /> Eliminar
+                    </button>
+                  </div>
+                )}
+
               </div>
             </div>
           ))}
