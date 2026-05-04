@@ -27,11 +27,30 @@ export default function Ventas({ esAdmin }) {
   }, [esAdmin])
 
   const fetchVentas = async () => {
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from('ventas')
-      .select('*, productos(nombre, precio), perfiles(nombre, apellido)')
+      .select('*, productos(nombre, precio)')
       .order('created_at', { ascending: false })
-    setVentas(data || [])
+
+    if (error) { console.log('ERROR:', error); setLoading(false); return }
+
+    // Obtener nombres de perfiles por separado
+    const usuarioIds = [...new Set((data || []).map(v => v.usuario_id).filter(Boolean))]
+    let perfilesMap = {}
+    if (usuarioIds.length > 0) {
+      const { data: perfilesData } = await supabase
+        .from('perfiles')
+        .select('id, nombre, apellido')
+        .in('id', usuarioIds)
+      perfilesData?.forEach(p => { perfilesMap[p.id] = p })
+    }
+
+    const ventasConPerfil = (data || []).map(v => ({
+      ...v,
+      perfil: perfilesMap[v.usuario_id] || null
+    }))
+
+    setVentas(ventasConPerfil)
     setLoading(false)
   }
 
@@ -187,7 +206,7 @@ export default function Ventas({ esAdmin }) {
                   <td className="px-5 py-3.5 font-medium text-white">{v.productos?.nombre || '—'}</td>
                   {esAdmin && (
                     <td className="px-5 py-3.5" style={{ color: 'rgba(255,255,255,0.45)' }}>
-                      {v.perfiles?.nombre} {v.perfiles?.apellido}
+                      {v.perfil?.nombre} {v.perfil?.apellido}
                     </td>
                   )}
                   <td className="px-5 py-3.5 text-center" style={{ color: 'rgba(255,255,255,0.5)' }}>{v.cantidad}</td>
