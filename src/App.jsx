@@ -40,7 +40,7 @@ export default function App() {
       <Route element={session ? <Layout session={session} rol={rol} /> : <Navigate to="/login" />}>
         <Route path="/" element={<Dashboard />} />
         <Route path="/productos" element={<Productos esAdmin={esAdmin} />} />
-        <Route path="/ventas" element={<Ventas />} />
+        <Route path="/ventas" element={<Ventas esAdmin={esAdmin} />} />
         <Route path="/perfil" element={<Perfil session={session} />} />
         <Route path="/usuarios" element={esAdmin ? <Usuarios /> : <Navigate to="/" />} />
       </Route>

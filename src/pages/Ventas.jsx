@@ -6,26 +6,30 @@ import toast from 'react-hot-toast'
 const glass = { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }
 const inputStyle = { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '6px 10px', fontSize: '12px', color: '#fff', outline: 'none', width: '60px', textAlign: 'center' }
 
-export default function Ventas() {
+export default function Ventas({ esAdmin }) {
   const [ventas, setVentas] = useState([])
   const [productos, setProductos] = useState([])
+  const [vendedores, setVendedores] = useState([])
   const [loading, setLoading] = useState(true)
   const [carritoOpen, setCarritoOpen] = useState(false)
   const [carrito, setCarrito] = useState([])
   const [guardando, setGuardando] = useState(false)
+  const [filtroVendedor, setFiltroVendedor] = useState('')
 
   useEffect(() => {
     fetchVentas()
     fetchProductos()
+    if (esAdmin) fetchVendedores()
     const channel = supabase.channel('ventas')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ventas' }, fetchVentas)
       .subscribe()
     return () => supabase.removeChannel(channel)
-  }, [])
+  }, [esAdmin])
 
   const fetchVentas = async () => {
     const { data } = await supabase
-      .from('ventas').select('*, productos(nombre, precio)')
+      .from('ventas')
+      .select('*, productos(nombre, precio), perfiles(nombre, apellido)')
       .order('created_at', { ascending: false })
     setVentas(data || [])
     setLoading(false)
@@ -35,6 +39,17 @@ export default function Ventas() {
     const { data } = await supabase.from('productos').select('*').gt('stock', 0).order('nombre')
     setProductos(data || [])
   }
+
+  const fetchVendedores = async () => {
+    const { data } = await supabase.from('perfiles').select('id, nombre, apellido').order('nombre')
+    setVendedores(data || [])
+  }
+
+  const ventasFiltradas = esAdmin && filtroVendedor
+    ? ventas.filter(v => v.usuario_id === filtroVendedor)
+    : ventas
+
+  const totalFiltrado = ventasFiltradas.reduce((acc, v) => acc + Number(v.total), 0)
 
   // Carrito helpers
   const agregarAlCarrito = (producto) => {
@@ -57,37 +72,23 @@ export default function Ventas() {
     setCarrito(prev => prev.map(i => i.id === id ? { ...i, cantidad } : i))
   }
 
-  const quitarDelCarrito = (id) => {
-    setCarrito(prev => prev.filter(i => i.id !== id))
-  }
+  const quitarDelCarrito = (id) => setCarrito(prev => prev.filter(i => i.id !== id))
 
   const totalCarrito = carrito.reduce((acc, i) => acc + i.precio * i.cantidad, 0)
 
   const confirmarVenta = async () => {
     if (carrito.length === 0) return toast.error('El carrito está vacío')
     setGuardando(true)
-
     const usuario_id = (await supabase.auth.getUser()).data.user.id
-
-    // Insertar cada item como venta
     const inserts = carrito.map(item => ({
-      producto_id: item.id,
-      cantidad: item.cantidad,
-      precio_unitario: item.precio,
-      total: item.precio * item.cantidad,
-      usuario_id
+      producto_id: item.id, cantidad: item.cantidad,
+      precio_unitario: item.precio, total: item.precio * item.cantidad, usuario_id
     }))
-
     const { error } = await supabase.from('ventas').insert(inserts)
     if (error) { toast.error('Error al registrar la venta'); setGuardando(false); return }
-
-    // Descontar stock de cada producto
     await Promise.all(carrito.map(item =>
-      supabase.from('productos')
-        .update({ stock: item.stock - item.cantidad })
-        .eq('id', item.id)
+      supabase.from('productos').update({ stock: item.stock - item.cantidad }).eq('id', item.id)
     ))
-
     toast.success(`Venta registrada — S/ ${totalCarrito.toFixed(2)} ✓`)
     setCarrito([])
     setCarritoOpen(false)
@@ -107,7 +108,10 @@ export default function Ventas() {
         <div>
           <h2 className="text-xl font-semibold text-white">Ventas</h2>
           <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
-            {ventas.length} transacciones registradas
+            {ventasFiltradas.length} transacciones
+            {ventasFiltradas.length > 0 && (
+              <span style={{ color: '#2dd4bf' }}> · S/ {totalFiltrado.toFixed(2)} total</span>
+            )}
           </p>
         </div>
         <button onClick={() => setCarritoOpen(true)}
@@ -123,14 +127,43 @@ export default function Ventas() {
         </button>
       </div>
 
-      {/* Historial de ventas */}
+      {/* Filtro por vendedor — solo admin */}
+      {esAdmin && (
+        <div className="mb-4 flex items-center gap-3">
+          <select
+            value={filtroVendedor}
+            onChange={e => setFiltroVendedor(e.target.value)}
+            style={{
+              background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: '12px', padding: '8px 14px', fontSize: '12px',
+              color: filtroVendedor ? '#fff' : 'rgba(255,255,255,0.4)',
+              outline: 'none', appearance: 'none', cursor: 'pointer'
+            }}>
+            <option value="" style={{ background: '#1a1040' }}>Todos los vendedores</option>
+            {vendedores.map(v => (
+              <option key={v.id} value={v.id} style={{ background: '#1a1040' }}>
+                {v.nombre} {v.apellido}
+              </option>
+            ))}
+          </select>
+          {filtroVendedor && (
+            <button onClick={() => setFiltroVendedor('')}
+              className="text-xs px-3 py-2 rounded-xl transition-all"
+              style={{ border: '1px solid rgba(251,113,133,0.3)', color: '#fb7185', background: 'rgba(251,113,133,0.08)' }}>
+              Limpiar
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Tabla de ventas */}
       {loading ? (
         <div className="space-y-2">
           {[...Array(4)].map((_, i) => (
             <div key={i} className="h-12 rounded-xl animate-pulse" style={{ background: 'rgba(255,255,255,0.06)' }} />
           ))}
         </div>
-      ) : ventas.length === 0 ? (
+      ) : ventasFiltradas.length === 0 ? (
         <div className="text-center py-24" style={{ color: 'rgba(255,255,255,0.2)' }}>
           <ShoppingCart size={40} className="mx-auto mb-3" />
           <p className="text-sm">No hay ventas registradas</p>
@@ -140,16 +173,23 @@ export default function Ventas() {
           <table className="w-full text-xs">
             <thead style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
               <tr>
-                {['Producto', 'Cant.', 'P. Unit.', 'Total', 'Fecha'].map((h, i) => (
-                  <th key={i} className={`px-5 py-3.5 font-medium uppercase tracking-wide ${i === 0 ? 'text-left' : i < 2 ? 'text-center' : 'text-right'}`}
-                    style={{ color: 'rgba(255,255,255,0.3)' }}>{h}</th>
-                ))}
+                <th className="px-5 py-3.5 text-left font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>Producto</th>
+                {esAdmin && <th className="px-5 py-3.5 text-left font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>Vendedor</th>}
+                <th className="px-5 py-3.5 text-center font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>Cant.</th>
+                <th className="px-5 py-3.5 text-right font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>P. Unit.</th>
+                <th className="px-5 py-3.5 text-right font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>Total</th>
+                <th className="px-5 py-3.5 text-right font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>Fecha</th>
               </tr>
             </thead>
             <tbody>
-              {ventas.map((v, idx) => (
-                <tr key={v.id} style={{ borderBottom: idx < ventas.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+              {ventasFiltradas.map((v, idx) => (
+                <tr key={v.id} style={{ borderBottom: idx < ventasFiltradas.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
                   <td className="px-5 py-3.5 font-medium text-white">{v.productos?.nombre || '—'}</td>
+                  {esAdmin && (
+                    <td className="px-5 py-3.5" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                      {v.perfiles?.nombre} {v.perfiles?.apellido}
+                    </td>
+                  )}
                   <td className="px-5 py-3.5 text-center" style={{ color: 'rgba(255,255,255,0.5)' }}>{v.cantidad}</td>
                   <td className="px-5 py-3.5 text-right" style={{ color: 'rgba(255,255,255,0.5)' }}>S/ {Number(v.precio_unitario).toFixed(2)}</td>
                   <td className="px-5 py-3.5 text-right font-semibold" style={{ color: '#2dd4bf' }}>S/ {Number(v.total).toFixed(2)}</td>
@@ -166,8 +206,6 @@ export default function Ventas() {
         <div className="fixed inset-0 z-50 flex" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }}>
           <div className="ml-auto h-full w-full max-w-lg flex flex-col"
             style={{ background: 'rgba(15,12,41,0.98)', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
-
-            {/* Header carrito */}
             <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
               <div>
                 <h3 className="text-sm font-semibold text-white">Nueva venta</h3>
@@ -175,14 +213,12 @@ export default function Ventas() {
                   {itemsEnCarrito} {itemsEnCarrito === 1 ? 'producto' : 'productos'} en el carrito
                 </p>
               </div>
-              <button onClick={() => setCarritoOpen(false)}
-                className="p-2 rounded-lg transition-all"
+              <button onClick={() => setCarritoOpen(false)} className="p-2 rounded-lg"
                 style={{ color: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.05)' }}>
                 <X size={16} />
               </button>
             </div>
 
-            {/* Lista de productos disponibles */}
             <div className="flex-1 overflow-auto px-6 py-4 space-y-4">
               <p className="text-xs uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>Productos disponibles</p>
               <div className="space-y-2">
@@ -198,7 +234,7 @@ export default function Ventas() {
                         </p>
                       </div>
                       <button onClick={() => agregarAlCarrito(p)}
-                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium transition-all"
+                        className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium"
                         style={{ background: enCarrito ? 'rgba(45,212,191,0.15)' : 'rgba(255,255,255,0.08)', color: enCarrito ? '#2dd4bf' : 'rgba(255,255,255,0.6)' }}>
                         <Plus size={11} /> {enCarrito ? `Agregar (${enCarrito.cantidad})` : 'Agregar'}
                       </button>
@@ -207,9 +243,8 @@ export default function Ventas() {
                 })}
               </div>
 
-              {/* Carrito actual */}
               {carrito.length > 0 && (
-                <div className="mt-4">
+                <div>
                   <p className="text-xs uppercase tracking-wide mb-2" style={{ color: 'rgba(255,255,255,0.3)' }}>En el carrito</p>
                   <div className="space-y-2">
                     {carrito.map(item => (
@@ -221,14 +256,9 @@ export default function Ventas() {
                             S/ {(item.precio * item.cantidad).toFixed(2)}
                           </p>
                         </div>
-                        <input
-                          type="number" min="1" max={item.stock}
-                          value={item.cantidad}
-                          onChange={e => cambiarCantidad(item.id, e.target.value)}
-                          style={inputStyle}
-                        />
-                        <button onClick={() => quitarDelCarrito(item.id)}
-                          className="p-1.5 rounded-lg transition-all"
+                        <input type="number" min="1" max={item.stock} value={item.cantidad}
+                          onChange={e => cambiarCantidad(item.id, e.target.value)} style={inputStyle} />
+                        <button onClick={() => quitarDelCarrito(item.id)} className="p-1.5 rounded-lg"
                           style={{ color: '#fb7185', background: 'rgba(251,113,133,0.1)' }}>
                           <Trash2 size={12} />
                         </button>
@@ -239,26 +269,22 @@ export default function Ventas() {
               )}
             </div>
 
-            {/* Footer con total */}
             <div className="px-6 py-5 space-y-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
               {carrito.length > 0 && (
                 <div className="flex items-center justify-between">
                   <span className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>Total</span>
-                  <span className="text-2xl font-semibold" style={{ color: '#2dd4bf' }}>
-                    S/ {totalCarrito.toFixed(2)}
-                  </span>
+                  <span className="text-2xl font-semibold" style={{ color: '#2dd4bf' }}>S/ {totalCarrito.toFixed(2)}</span>
                 </div>
               )}
               <div className="flex gap-2">
-                <button onClick={() => { setCarritoOpen(false) }}
-                  className="flex-1 py-2.5 rounded-xl text-xs transition-all"
+                <button onClick={() => setCarritoOpen(false)} className="flex-1 py-2.5 rounded-xl text-xs"
                   style={{ border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)' }}>
                   Cancelar
                 </button>
                 <button onClick={confirmarVenta} disabled={guardando || carrito.length === 0}
-                  className="flex-1 py-2.5 rounded-xl text-xs font-medium text-white transition-all"
+                  className="flex-1 py-2.5 rounded-xl text-xs font-medium text-white"
                   style={{ background: 'linear-gradient(135deg, #0d9488, #2dd4bf)', opacity: (guardando || carrito.length === 0) ? 0.5 : 1 }}>
-                  {guardando ? 'Registrando...' : `Confirmar venta`}
+                  {guardando ? 'Registrando...' : 'Confirmar venta'}
                 </button>
               </div>
             </div>
