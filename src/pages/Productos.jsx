@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { Plus, Pencil, Trash2, AlertTriangle, Package, Search } from 'lucide-react'
 import toast from 'react-hot-toast'
+import ModalConfirm from '../components/ModalConfirm'
 
 const glass = { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }
 const inputStyle = { width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '12px', padding: '9px 14px', fontSize: '13px', color: '#fff', outline: 'none' }
@@ -17,6 +18,9 @@ export default function Productos({ esAdmin = false }) {
   const [busqueda, setBusqueda] = useState('')
   const [filtroCategoria, setFiltroCategoria] = useState('')
   const [ordenar, setOrdenar] = useState('reciente')
+  const [modalConfirm, setModalConfirm] = useState(false)
+  const [eliminando, setEliminando] = useState(false)
+  const [productoAEliminar, setProductoAEliminar] = useState(null)
 
   useEffect(() => {
     fetchProductos()
@@ -64,11 +68,14 @@ export default function Productos({ esAdmin = false }) {
     setModalOpen(false)
   }
 
-  const eliminarProducto = async (id) => {
-    if (!confirm('¿Eliminar este producto?')) return
-    const { error } = await supabase.from('productos').delete().eq('id', id)
+  const eliminarProducto = async () => {
+    setEliminando(true)
+    const { error } = await supabase.from('productos').delete().eq('id', productoAEliminar.id)
     if (error) toast.error('Error al eliminar')
     else toast.success('Producto eliminado')
+    setEliminando(false)
+    setModalConfirm(false)
+    setProductoAEliminar(null)
   }
 
   const categorias = [...new Set(productos.map(p => p.categoria).filter(Boolean))]
@@ -203,7 +210,8 @@ export default function Productos({ esAdmin = false }) {
                       style={{ color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.05)' }}>
                       <Pencil size={11} /> Editar
                     </button>
-                    <button onClick={() => eliminarProducto(p.id)} className="flex-1 flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-lg transition-all"
+                    <button onClick={() => { setProductoAEliminar(p); setModalConfirm(true) }}
+                      className="flex-1 flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-lg transition-all"
                       style={{ color: '#fb7185', background: 'rgba(251,113,133,0.08)' }}>
                       <Trash2 size={11} /> Eliminar
                     </button>
@@ -246,6 +254,16 @@ export default function Productos({ esAdmin = false }) {
             </div>
           </div>
         </div>
+      )}
+
+      {modalConfirm && (
+        <ModalConfirm
+          titulo="Eliminar producto"
+          mensaje={`¿Estás seguro que quieres eliminar "${productoAEliminar?.nombre}"? Esta acción no se puede deshacer.`}
+          onConfirmar={eliminarProducto}
+          onCancelar={() => { setModalConfirm(false); setProductoAEliminar(null) }}
+          cargando={eliminando}
+        />
       )}
     </div>
   )

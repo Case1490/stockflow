@@ -60,13 +60,13 @@ export default function Ventas({ esAdmin }) {
   }
 
   const fetchVendedores = async () => {
-  const { data } = await supabase
-    .from('perfiles')
-    .select('id, nombre, apellido')
-    .eq('rol', 'vendedor')
-    .order('nombre')
-  setVendedores(data || [])
-}
+    const { data } = await supabase
+      .from('perfiles')
+      .select('id, nombre, apellido')
+      .eq('rol', 'vendedor')
+      .order('nombre')
+    setVendedores(data || [])
+  }
 
   const ventasFiltradas = esAdmin && filtroVendedor
     ? ventas.filter(v => v.usuario_id === filtroVendedor)
@@ -104,8 +104,12 @@ export default function Ventas({ esAdmin }) {
     setGuardando(true)
     const usuario_id = (await supabase.auth.getUser()).data.user.id
     const inserts = carrito.map(item => ({
-      producto_id: item.id, cantidad: item.cantidad,
-      precio_unitario: item.precio, total: item.precio * item.cantidad, usuario_id
+      producto_id: item.id,
+      producto_nombre: item.nombre,
+      cantidad: item.cantidad,
+      precio_unitario: item.precio,
+      total: item.precio * item.cantidad,
+      usuario_id
     }))
     const { error } = await supabase.from('ventas').insert(inserts)
     if (error) { toast.error('Error al registrar la venta'); setGuardando(false); return }
@@ -207,7 +211,11 @@ export default function Ventas({ esAdmin }) {
             <tbody>
               {ventasFiltradas.map((v, idx) => (
                 <tr key={v.id} style={{ borderBottom: idx < ventasFiltradas.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
-                  <td className="px-5 py-3.5 font-medium text-white">{v.productos?.nombre || '—'}</td>
+                  <td className="px-5 py-3.5 font-medium text-white">
+                    {v.producto_nombre || v.productos?.nombre || (
+                      <span style={{ color: 'rgba(255,255,255,0.25)', fontStyle: 'italic' }}>Producto eliminado</span>
+                    )}
+                  </td>
                   {esAdmin && (
                     <td className="px-5 py-3.5" style={{ color: 'rgba(255,255,255,0.45)' }}>
                       {v.perfil?.nombre} {v.perfil?.apellido}
