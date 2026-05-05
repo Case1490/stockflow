@@ -60,9 +60,13 @@ export default function Ventas({ esAdmin }) {
   }
 
   const fetchVendedores = async () => {
-    const { data } = await supabase.from('perfiles').select('id, nombre, apellido').order('nombre')
-    setVendedores(data || [])
-  }
+  const { data } = await supabase
+    .from('perfiles')
+    .select('id, nombre, apellido')
+    .eq('rol', 'vendedor')
+    .order('nombre')
+  setVendedores(data || [])
+}
 
   const ventasFiltradas = esAdmin && filtroVendedor
     ? ventas.filter(v => v.usuario_id === filtroVendedor)

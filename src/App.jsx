@@ -38,7 +38,7 @@ export default function App() {
     <Routes>
       <Route path="/login" element={!session ? <Login /> : <Navigate to="/" />} />
       <Route element={session ? <Layout session={session} rol={rol} /> : <Navigate to="/login" />}>
-        <Route path="/" element={<Dashboard />} />
+        <Route path="/" element={<Dashboard esAdmin={esAdmin} session={session} />} />
         <Route path="/productos" element={<Productos esAdmin={esAdmin} />} />
         <Route path="/ventas" element={<Ventas esAdmin={esAdmin} />} />
         <Route path="/perfil" element={<Perfil session={session} />} />
