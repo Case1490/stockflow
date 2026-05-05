@@ -211,9 +211,23 @@ export default function Ventas({ esAdmin }) {
             <tbody>
               {ventasFiltradas.map((v, idx) => (
                 <tr key={v.id} style={{ borderBottom: idx < ventasFiltradas.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
-                  <td className="px-5 py-3.5 font-medium text-white">
-                    {v.producto_nombre || v.productos?.nombre || (
-                      <span style={{ color: 'rgba(255,255,255,0.25)', fontStyle: 'italic' }}>Producto eliminado</span>
+                  <td className="px-5 py-3.5 font-medium">
+                    {v.productos?.nombre ? (
+                      // Producto aún existe
+                      <span style={{ color: '#fff' }}>{v.productos.nombre}</span>
+                    ) : v.producto_nombre ? (
+                      // Producto eliminado pero tiene nombre guardado
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                        <span style={{ color: 'rgba(255,255,255,0.4)' }}>{v.producto_nombre}</span>
+                        <span style={{
+                          fontSize: '10px', padding: '1px 7px', borderRadius: '20px',
+                          background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.25)',
+                          border: '1px solid rgba(255,255,255,0.08)'
+                        }}>eliminado</span>
+                      </span>
+                    ) : (
+                      // Sin nombre guardado
+                      <span style={{ color: 'rgba(255,255,255,0.2)', fontStyle: 'italic' }}>Producto eliminado</span>
                     )}
                   </td>
                   {esAdmin && (
