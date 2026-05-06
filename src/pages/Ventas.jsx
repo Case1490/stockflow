@@ -2,13 +2,12 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { Plus, ShoppingCart, Trash2, X } from 'lucide-react'
 import toast from 'react-hot-toast'
-import jsPDF from 'jspdf'
-import autoTable from 'jspdf-autotable'
 import FiltroFecha from '../components/FiltroFecha'
 import { getRangoFecha } from '../hooks/useFiltroFecha'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
-const glass = { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }
-const inputStyle = { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '6px 10px', fontSize: '12px', color: '#fff', outline: 'none', width: '60px', textAlign: 'center' }
+const inputStyle = { background: 'var(--bg-input)', border: '1px solid var(--border-input)', borderRadius: '10px', padding: '6px 10px', fontSize: '12px', color: 'var(--text-primary)', outline: 'none', width: '60px', textAlign: 'center' }
 
 export default function Ventas({ esAdmin }) {
   const [ventas, setVentas] = useState([])
@@ -37,21 +36,16 @@ export default function Ventas({ esAdmin }) {
       .from('ventas')
       .select('*, productos(nombre, precio)')
       .order('created_at', { ascending: false })
-
     if (desde) query = query.gte('created_at', desde)
-
     const { data } = await query
 
     const usuarioIds = [...new Set((data || []).map(v => v.usuario_id).filter(Boolean))]
     let perfilesMap = {}
     if (usuarioIds.length > 0) {
       const { data: perfilesData } = await supabase
-        .from('perfiles')
-        .select('id, nombre, apellido')
-        .in('id', usuarioIds)
+        .from('perfiles').select('id, nombre, apellido').in('id', usuarioIds)
       perfilesData?.forEach(p => { perfilesMap[p.id] = p })
     }
-
     setVentas((data || []).map(v => ({ ...v, perfil: perfilesMap[v.usuario_id] || null })))
     setLoading(false)
   }
@@ -62,11 +56,7 @@ export default function Ventas({ esAdmin }) {
   }
 
   const fetchVendedores = async () => {
-    const { data } = await supabase
-      .from('perfiles')
-      .select('id, nombre, apellido')
-      .eq('rol', 'vendedor')
-      .order('nombre')
+    const { data } = await supabase.from('perfiles').select('id, nombre, apellido').eq('rol', 'vendedor').order('nombre')
     setVendedores(data || [])
   }
 
@@ -76,15 +66,11 @@ export default function Ventas({ esAdmin }) {
 
   const totalFiltrado = ventasFiltradas.reduce((acc, v) => acc + Number(v.total), 0)
 
-  // Carrito helpers
   const agregarAlCarrito = (producto) => {
     setCarrito(prev => {
       const existe = prev.find(i => i.id === producto.id)
       if (existe) {
-        if (existe.cantidad >= producto.stock) {
-          toast.error(`Máximo ${producto.stock} unidades disponibles`)
-          return prev
-        }
+        if (existe.cantidad >= producto.stock) { toast.error(`Máximo ${producto.stock} unidades`); return prev }
         return prev.map(i => i.id === producto.id ? { ...i, cantidad: i.cantidad + 1 } : i)
       }
       return [...prev, { ...producto, cantidad: 1 }]
@@ -98,7 +84,6 @@ export default function Ventas({ esAdmin }) {
   }
 
   const quitarDelCarrito = (id) => setCarrito(prev => prev.filter(i => i.id !== id))
-
   const totalCarrito = carrito.reduce((acc, i) => acc + i.precio * i.cantidad, 0)
 
   const confirmarVenta = async () => {
@@ -106,12 +91,9 @@ export default function Ventas({ esAdmin }) {
     setGuardando(true)
     const usuario_id = (await supabase.auth.getUser()).data.user.id
     const inserts = carrito.map(item => ({
-      producto_id: item.id,
-      producto_nombre: item.nombre,
-      cantidad: item.cantidad,
-      precio_unitario: item.precio,
-      total: item.precio * item.cantidad,
-      usuario_id
+      producto_id: item.id, producto_nombre: item.nombre,
+      cantidad: item.cantidad, precio_unitario: item.precio,
+      total: item.precio * item.cantidad, usuario_id
     }))
     const { error } = await supabase.from('ventas').insert(inserts)
     if (error) { toast.error('Error al registrar la venta'); setGuardando(false); return }
@@ -125,21 +107,13 @@ export default function Ventas({ esAdmin }) {
     fetchProductos()
   }
 
-  const formatFecha = (f) => new Date(f).toLocaleString('es-PE', {
-    day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
-  })
-
-  const itemsEnCarrito = carrito.reduce((acc, i) => acc + i.cantidad, 0)
-
   const exportarPDF = () => {
     const doc = new jsPDF()
     const ahora = new Date()
     const fechaStr = ahora.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
-
-    // Header
-    doc.setFillColor(15, 12, 41)
+    doc.setFillColor(5, 13, 26)
     doc.rect(0, 0, 220, 40, 'F')
-    doc.setTextColor(45, 212, 191)
+    doc.setTextColor(59, 130, 246)
     doc.setFontSize(20)
     doc.setFont('helvetica', 'bold')
     doc.text('StockFlow', 14, 18)
@@ -148,114 +122,78 @@ export default function Ventas({ esAdmin }) {
     doc.setFont('helvetica', 'normal')
     doc.text('Reporte de ventas', 14, 26)
     doc.text(`Generado el ${fechaStr}`, 14, 33)
-
-    // Filtro activo
-    if (filtroVendedor) {
-      const vendedor = vendedores.find(v => v.id === filtroVendedor)
-      if (vendedor) {
-        doc.setTextColor(45, 212, 191)
-        doc.text(`Vendedor: ${vendedor.nombre} ${vendedor.apellido}`, 140, 26)
-      }
-    }
-
-    // Stats resumen
-    doc.setFillColor(240, 240, 250)
+    doc.setFillColor(240, 244, 250)
     doc.rect(14, 45, 55, 18, 'F')
     doc.rect(74, 45, 55, 18, 'F')
     doc.rect(134, 45, 55, 18, 'F')
-
     doc.setTextColor(100, 100, 130)
     doc.setFontSize(8)
     doc.text('TOTAL TRANSACCIONES', 16, 51)
     doc.text('INGRESOS TOTALES', 76, 51)
     doc.text('PROMEDIO POR VENTA', 136, 51)
-
-    doc.setTextColor(15, 12, 41)
+    doc.setTextColor(5, 13, 26)
     doc.setFontSize(14)
     doc.setFont('helvetica', 'bold')
     doc.text(`${ventasFiltradas.length}`, 16, 60)
     doc.text(`S/ ${totalFiltrado.toFixed(2)}`, 76, 60)
     const promedio = ventasFiltradas.length > 0 ? totalFiltrado / ventasFiltradas.length : 0
     doc.text(`S/ ${promedio.toFixed(2)}`, 136, 60)
-
-    // Tabla
     const columnas = esAdmin
       ? ['Producto', 'Vendedor', 'Cant.', 'P. Unit.', 'Total', 'Fecha']
       : ['Producto', 'Cant.', 'P. Unit.', 'Total', 'Fecha']
-
     const filas = ventasFiltradas.map(v => {
       const nombreProducto = v.productos?.nombre || v.producto_nombre || 'Producto eliminado'
-      const fecha = new Date(v.created_at).toLocaleDateString('es-PE', {
-        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
-      })
-      if (esAdmin) {
-        return [
-          nombreProducto,
-          `${v.perfil?.nombre || ''} ${v.perfil?.apellido || ''}`.trim() || '—',
-          v.cantidad,
-          `S/ ${Number(v.precio_unitario).toFixed(2)}`,
-          `S/ ${Number(v.total).toFixed(2)}`,
-          fecha
-        ]
-      }
-      return [
-        nombreProducto,
-        v.cantidad,
-        `S/ ${Number(v.precio_unitario).toFixed(2)}`,
-        `S/ ${Number(v.total).toFixed(2)}`,
-        fecha
-      ]
+      const fecha = new Date(v.created_at).toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+      if (esAdmin) return [nombreProducto, `${v.perfil?.nombre || ''} ${v.perfil?.apellido || ''}`.trim() || '—', v.cantidad, `S/ ${Number(v.precio_unitario).toFixed(2)}`, `S/ ${Number(v.total).toFixed(2)}`, fecha]
+      return [nombreProducto, v.cantidad, `S/ ${Number(v.precio_unitario).toFixed(2)}`, `S/ ${Number(v.total).toFixed(2)}`, fecha]
     })
-
     autoTable(doc, {
-      head: [columnas],
-      body: filas,
-      startY: 70,
+      head: [columnas], body: filas, startY: 70,
       styles: { fontSize: 9, cellPadding: 4 },
-      headStyles: { fillColor: [15, 12, 41], textColor: [45, 212, 191], fontStyle: 'bold' },
-      alternateRowStyles: { fillColor: [248, 248, 252] },
-      columnStyles: { 0: { cellWidth: esAdmin ? 45 : 60 } },
-      foot: [[
-        ...(esAdmin ? ['', '', '', '', `S/ ${totalFiltrado.toFixed(2)}`, ''] : ['', '', '', `S/ ${totalFiltrado.toFixed(2)}`, ''])
-      ]],
-      footStyles: { fillColor: [15, 12, 41], textColor: [45, 212, 191], fontStyle: 'bold' }
+      headStyles: { fillColor: [5, 13, 26], textColor: [59, 130, 246], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [240, 244, 250] },
+      foot: [[...(esAdmin ? ['', '', '', '', `S/ ${totalFiltrado.toFixed(2)}`, ''] : ['', '', '', `S/ ${totalFiltrado.toFixed(2)}`, ''])]],
+      footStyles: { fillColor: [5, 13, 26], textColor: [59, 130, 246], fontStyle: 'bold' }
     })
-
-    // Nombre del archivo
-    const vendedorNombre = filtroVendedor
-      ? vendedores.find(v => v.id === filtroVendedor)?.nombre || 'vendedor'
-      : 'todos'
+    const vendedorNombre = filtroVendedor ? vendedores.find(v => v.id === filtroVendedor)?.nombre || 'vendedor' : 'todos'
     doc.save(`ventas_${vendedorNombre}_${fechaStr.replace(/\//g, '-')}.pdf`)
     toast.success('Reporte exportado ✓')
   }
 
+  const formatFecha = (f) => new Date(f).toLocaleString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+  const itemsEnCarrito = carrito.reduce((acc, i) => acc + i.cantidad, 0)
+
+  const selectStyle = {
+    background: 'var(--bg-input)', border: '1px solid var(--border-input)',
+    borderRadius: '12px', padding: '8px 14px', fontSize: '12px',
+    color: 'var(--text-secondary)', outline: 'none', appearance: 'none', cursor: 'pointer'
+  }
+
   return (
     <div>
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex items-center justify-between mb-4">
         <div>
-          <h2 className="text-xl font-semibold text-white">Ventas</h2>
-          <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+          <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Ventas</h2>
+          <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
             {ventasFiltradas.length} transacciones
-            {ventasFiltradas.length > 0 && (
-              <span style={{ color: '#2dd4bf' }}> · S/ {totalFiltrado.toFixed(2)} total</span>
-            )}
+            {ventasFiltradas.length > 0 && <span style={{ color: 'var(--accent)' }}> · S/ {totalFiltrado.toFixed(2)} total</span>}
           </p>
         </div>
         <div className="flex items-center gap-2">
           {ventasFiltradas.length > 0 && (
             <button onClick={exportarPDF}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all"
-              style={{ border: '1px solid rgba(45,212,191,0.3)', color: '#2dd4bf', background: 'rgba(45,212,191,0.08)' }}>
+              style={{ border: '1px solid var(--accent-border)', color: 'var(--accent)', background: 'var(--accent-bg)' }}>
               📄 Exportar PDF
             </button>
           )}
           <button onClick={() => setCarritoOpen(true)}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium text-white relative"
-            style={{ background: 'linear-gradient(135deg, #0d9488, #2dd4bf)' }}>
+            style={{ background: 'var(--accent-gradient)' }}>
             <ShoppingCart size={14} /> Nueva venta
             {itemsEnCarrito > 0 && (
               <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-xs flex items-center justify-center font-bold"
-                style={{ background: '#fb7185', fontSize: '10px' }}>
+                style={{ background: 'var(--danger)', fontSize: '10px', color: '#fff' }}>
                 {itemsEnCarrito}
               </span>
             )}
@@ -264,19 +202,13 @@ export default function Ventas({ esAdmin }) {
       </div>
 
       <div className="mb-4 flex items-center justify-between flex-wrap gap-3">
-        <FiltroFecha valor={filtroFecha} onChange={setFiltroFecha} />
+        <FiltroFecha valor={filtroFecha} onChange={v => { setFiltroFecha(v); }} />
         {esAdmin && (
           <div className="flex items-center gap-2">
-            <select value={filtroVendedor} onChange={e => setFiltroVendedor(e.target.value)}
-              style={{
-                background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
-                borderRadius: '12px', padding: '8px 14px', fontSize: '12px',
-                color: filtroVendedor ? '#fff' : 'rgba(255,255,255,0.4)',
-                outline: 'none', appearance: 'none', cursor: 'pointer'
-              }}>
-              <option value="" style={{ background: '#1a1040' }}>Todos los vendedores</option>
+            <select value={filtroVendedor} onChange={e => setFiltroVendedor(e.target.value)} style={selectStyle}>
+              <option value="" style={{ background: 'var(--bg-modal)' }}>Todos los vendedores</option>
               {vendedores.map(v => (
-                <option key={v.id} value={v.id} style={{ background: '#1a1040' }}>
+                <option key={v.id} value={v.id} style={{ background: 'var(--bg-modal)' }}>
                   {v.nombre} {v.apellido}
                 </option>
               ))}
@@ -284,7 +216,7 @@ export default function Ventas({ esAdmin }) {
             {filtroVendedor && (
               <button onClick={() => setFiltroVendedor('')}
                 className="text-xs px-3 py-2 rounded-xl"
-                style={{ border: '1px solid rgba(251,113,133,0.3)', color: '#fb7185', background: 'rgba(251,113,133,0.08)' }}>
+                style={{ border: '1px solid var(--danger-border)', color: 'var(--danger)', background: 'var(--danger-bg)' }}>
                 Limpiar
               </button>
             )}
@@ -292,62 +224,55 @@ export default function Ventas({ esAdmin }) {
         )}
       </div>
 
-      {/* Tabla de ventas */}
       {loading ? (
         <div className="space-y-2">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-12 rounded-xl animate-pulse" style={{ background: 'rgba(255,255,255,0.06)' }} />
+            <div key={i} className="h-12 rounded-xl animate-pulse" style={{ background: 'var(--bg-card)' }} />
           ))}
         </div>
       ) : ventasFiltradas.length === 0 ? (
-        <div className="text-center py-24" style={{ color: 'rgba(255,255,255,0.2)' }}>
-          <ShoppingCart size={40} className="mx-auto mb-3" />
+        <div className="text-center py-24" style={{ color: 'var(--text-muted)' }}>
+          <ShoppingCart size={40} className="mx-auto mb-3 opacity-30" />
           <p className="text-sm">No hay ventas registradas</p>
         </div>
       ) : (
-        <div className="rounded-2xl overflow-hidden" style={glass}>
+        <div className="rounded-2xl overflow-hidden"
+          style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)' }}>
           <table className="w-full text-xs">
-            <thead style={{ borderBottom: '1px solid rgba(255,255,255,0.07)' }}>
+            <thead style={{ borderBottom: '1px solid var(--border-card)' }}>
               <tr>
-                <th className="px-5 py-3.5 text-left font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>Producto</th>
-                {esAdmin && <th className="px-5 py-3.5 text-left font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>Vendedor</th>}
-                <th className="px-5 py-3.5 text-center font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>Cant.</th>
-                <th className="px-5 py-3.5 text-right font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>P. Unit.</th>
-                <th className="px-5 py-3.5 text-right font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>Total</th>
-                <th className="px-5 py-3.5 text-right font-medium uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>Fecha</th>
+                <th className="px-5 py-3.5 text-left font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Producto</th>
+                {esAdmin && <th className="px-5 py-3.5 text-left font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Vendedor</th>}
+                <th className="px-5 py-3.5 text-center font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Cant.</th>
+                <th className="px-5 py-3.5 text-right font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>P. Unit.</th>
+                <th className="px-5 py-3.5 text-right font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Total</th>
+                <th className="px-5 py-3.5 text-right font-medium uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Fecha</th>
               </tr>
             </thead>
             <tbody>
               {ventasFiltradas.map((v, idx) => (
-                <tr key={v.id} style={{ borderBottom: idx < ventasFiltradas.length - 1 ? '1px solid rgba(255,255,255,0.05)' : 'none' }}>
+                <tr key={v.id} style={{ borderBottom: idx < ventasFiltradas.length - 1 ? '1px solid var(--border-card)' : 'none' }}>
                   <td className="px-5 py-3.5 font-medium">
                     {v.productos?.nombre ? (
-                      // Producto aún existe
-                      <span style={{ color: '#fff' }}>{v.productos.nombre}</span>
+                      <span style={{ color: 'var(--text-primary)' }}>{v.productos.nombre}</span>
                     ) : v.producto_nombre ? (
-                      // Producto eliminado pero tiene nombre guardado
                       <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                        <span style={{ color: 'rgba(255,255,255,0.4)' }}>{v.producto_nombre}</span>
-                        <span style={{
-                          fontSize: '10px', padding: '1px 7px', borderRadius: '20px',
-                          background: 'rgba(255,255,255,0.06)', color: 'rgba(255,255,255,0.25)',
-                          border: '1px solid rgba(255,255,255,0.08)'
-                        }}>eliminado</span>
+                        <span style={{ color: 'var(--text-muted)' }}>{v.producto_nombre}</span>
+                        <span style={{ fontSize: '10px', padding: '1px 7px', borderRadius: '20px', background: 'var(--bg-input)', color: 'var(--text-muted)', border: '1px solid var(--border-card)' }}>eliminado</span>
                       </span>
                     ) : (
-                      // Sin nombre guardado
-                      <span style={{ color: 'rgba(255,255,255,0.2)', fontStyle: 'italic' }}>Producto eliminado</span>
+                      <span style={{ color: 'var(--text-muted)', fontStyle: 'italic' }}>Producto eliminado</span>
                     )}
                   </td>
                   {esAdmin && (
-                    <td className="px-5 py-3.5" style={{ color: 'rgba(255,255,255,0.45)' }}>
+                    <td className="px-5 py-3.5" style={{ color: 'var(--text-secondary)' }}>
                       {v.perfil?.nombre} {v.perfil?.apellido}
                     </td>
                   )}
-                  <td className="px-5 py-3.5 text-center" style={{ color: 'rgba(255,255,255,0.5)' }}>{v.cantidad}</td>
-                  <td className="px-5 py-3.5 text-right" style={{ color: 'rgba(255,255,255,0.5)' }}>S/ {Number(v.precio_unitario).toFixed(2)}</td>
-                  <td className="px-5 py-3.5 text-right font-semibold" style={{ color: '#2dd4bf' }}>S/ {Number(v.total).toFixed(2)}</td>
-                  <td className="px-5 py-3.5 text-right" style={{ color: 'rgba(255,255,255,0.25)' }}>{formatFecha(v.created_at)}</td>
+                  <td className="px-5 py-3.5 text-center" style={{ color: 'var(--text-secondary)' }}>{v.cantidad}</td>
+                  <td className="px-5 py-3.5 text-right" style={{ color: 'var(--text-secondary)' }}>S/ {Number(v.precio_unitario).toFixed(2)}</td>
+                  <td className="px-5 py-3.5 text-right font-semibold" style={{ color: 'var(--accent)' }}>S/ {Number(v.total).toFixed(2)}</td>
+                  <td className="px-5 py-3.5 text-right" style={{ color: 'var(--text-muted)' }}>{formatFecha(v.created_at)}</td>
                 </tr>
               ))}
             </tbody>
@@ -355,41 +280,49 @@ export default function Ventas({ esAdmin }) {
         </div>
       )}
 
-      {/* Panel del carrito */}
       {carritoOpen && (
-        <div className="fixed inset-0 z-50 flex" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }}>
+        <div className="fixed inset-0 z-50 flex" style={{ background: 'var(--overlay)', backdropFilter: 'blur(6px)' }}>
           <div className="ml-auto h-full w-full max-w-lg flex flex-col"
-            style={{ background: 'rgba(15,12,41,0.98)', borderLeft: '1px solid rgba(255,255,255,0.1)' }}>
-            <div className="flex items-center justify-between px-6 py-5" style={{ borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+            style={{ background: 'var(--bg-modal)', borderLeft: '1px solid var(--border-modal)' }}>
+            <div className="flex items-center justify-between px-6 py-5"
+              style={{ borderBottom: '1px solid var(--border-card)' }}>
               <div>
-                <h3 className="text-sm font-semibold text-white">Nueva venta</h3>
-                <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                <h3 className="text-sm font-semibold" style={{ color: 'var(--text-primary)' }}>Nueva venta</h3>
+                <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
                   {itemsEnCarrito} {itemsEnCarrito === 1 ? 'producto' : 'productos'} en el carrito
                 </p>
               </div>
               <button onClick={() => setCarritoOpen(false)} className="p-2 rounded-lg"
-                style={{ color: 'rgba(255,255,255,0.4)', background: 'rgba(255,255,255,0.05)' }}>
+                style={{ color: 'var(--text-muted)', background: 'var(--bg-input)' }}>
                 <X size={16} />
               </button>
             </div>
 
             <div className="flex-1 overflow-auto px-6 py-4 space-y-4">
-              <p className="text-xs uppercase tracking-wide" style={{ color: 'rgba(255,255,255,0.3)' }}>Productos disponibles</p>
+              <p className="text-xs uppercase tracking-wide" style={{ color: 'var(--text-muted)' }}>Productos disponibles</p>
               <div className="space-y-2">
                 {productos.map(p => {
                   const enCarrito = carrito.find(i => i.id === p.id)
                   return (
                     <div key={p.id} className="flex items-center justify-between p-3 rounded-xl"
-                      style={{ background: enCarrito ? 'rgba(45,212,191,0.08)' : 'rgba(255,255,255,0.04)', border: `1px solid ${enCarrito ? 'rgba(45,212,191,0.2)' : 'rgba(255,255,255,0.07)'}` }}>
+                      style={{
+                        background: enCarrito ? 'var(--accent-bg)' : 'var(--bg-input)',
+                        border: `1px solid ${enCarrito ? 'var(--accent-border)' : 'var(--border-card)'}`
+                      }}>
                       <div className="flex-1 min-w-0 mr-3">
-                        <p className="text-xs font-medium text-white truncate">{p.nombre}</p>
-                        <p className="text-xs mt-0.5" style={{ color: '#2dd4bf' }}>S/ {Number(p.precio).toFixed(2)}
-                          <span className="ml-2" style={{ color: 'rgba(255,255,255,0.25)' }}>{p.stock} disp.</span>
+                        <p className="text-xs font-medium truncate" style={{ color: 'var(--text-primary)' }}>{p.nombre}</p>
+                        <p className="text-xs mt-0.5" style={{ color: 'var(--accent)' }}>
+                          S/ {Number(p.precio).toFixed(2)}
+                          <span className="ml-2" style={{ color: 'var(--text-muted)' }}>{p.stock} disp.</span>
                         </p>
                       </div>
                       <button onClick={() => agregarAlCarrito(p)}
                         className="flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium"
-                        style={{ background: enCarrito ? 'rgba(45,212,191,0.15)' : 'rgba(255,255,255,0.08)', color: enCarrito ? '#2dd4bf' : 'rgba(255,255,255,0.6)' }}>
+                        style={{
+                          background: enCarrito ? 'var(--accent-bg)' : 'var(--bg-card)',
+                          color: enCarrito ? 'var(--accent)' : 'var(--text-secondary)',
+                          border: `1px solid ${enCarrito ? 'var(--accent-border)' : 'var(--border-card)'}`
+                        }}>
                         <Plus size={11} /> {enCarrito ? `Agregar (${enCarrito.cantidad})` : 'Agregar'}
                       </button>
                     </div>
@@ -399,21 +332,21 @@ export default function Ventas({ esAdmin }) {
 
               {carrito.length > 0 && (
                 <div>
-                  <p className="text-xs uppercase tracking-wide mb-2" style={{ color: 'rgba(255,255,255,0.3)' }}>En el carrito</p>
+                  <p className="text-xs uppercase tracking-wide mb-2" style={{ color: 'var(--text-muted)' }}>En el carrito</p>
                   <div className="space-y-2">
                     {carrito.map(item => (
                       <div key={item.id} className="flex items-center gap-3 p-3 rounded-xl"
-                        style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.08)' }}>
+                        style={{ background: 'var(--bg-input)', border: '1px solid var(--border-card)' }}>
                         <div className="flex-1 min-w-0">
-                          <p className="text-xs font-medium text-white truncate">{item.nombre}</p>
-                          <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+                          <p className="text-xs font-medium truncate" style={{ color: 'var(--text-primary)' }}>{item.nombre}</p>
+                          <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>
                             S/ {(item.precio * item.cantidad).toFixed(2)}
                           </p>
                         </div>
                         <input type="number" min="1" max={item.stock} value={item.cantidad}
                           onChange={e => cambiarCantidad(item.id, e.target.value)} style={inputStyle} />
                         <button onClick={() => quitarDelCarrito(item.id)} className="p-1.5 rounded-lg"
-                          style={{ color: '#fb7185', background: 'rgba(251,113,133,0.1)' }}>
+                          style={{ color: 'var(--danger)', background: 'var(--danger-bg)' }}>
                           <Trash2 size={12} />
                         </button>
                       </div>
@@ -423,21 +356,21 @@ export default function Ventas({ esAdmin }) {
               )}
             </div>
 
-            <div className="px-6 py-5 space-y-3" style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+            <div className="px-6 py-5 space-y-3" style={{ borderTop: '1px solid var(--border-card)' }}>
               {carrito.length > 0 && (
                 <div className="flex items-center justify-between">
-                  <span className="text-sm" style={{ color: 'rgba(255,255,255,0.5)' }}>Total</span>
-                  <span className="text-2xl font-semibold" style={{ color: '#2dd4bf' }}>S/ {totalCarrito.toFixed(2)}</span>
+                  <span className="text-sm" style={{ color: 'var(--text-secondary)' }}>Total</span>
+                  <span className="text-2xl font-semibold" style={{ color: 'var(--accent)' }}>S/ {totalCarrito.toFixed(2)}</span>
                 </div>
               )}
               <div className="flex gap-2">
                 <button onClick={() => setCarritoOpen(false)} className="flex-1 py-2.5 rounded-xl text-xs"
-                  style={{ border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)' }}>
+                  style={{ border: '1px solid var(--border-input)', color: 'var(--text-secondary)' }}>
                   Cancelar
                 </button>
                 <button onClick={confirmarVenta} disabled={guardando || carrito.length === 0}
                   className="flex-1 py-2.5 rounded-xl text-xs font-medium text-white"
-                  style={{ background: 'linear-gradient(135deg, #0d9488, #2dd4bf)', opacity: (guardando || carrito.length === 0) ? 0.5 : 1 }}>
+                  style={{ background: 'var(--accent-gradient)', opacity: (guardando || carrito.length === 0) ? 0.5 : 1 }}>
                   {guardando ? 'Registrando...' : 'Confirmar venta'}
                 </button>
               </div>
