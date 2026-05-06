@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 import { ShoppingCart, Package, AlertTriangle, TrendingUp, Users } from 'lucide-react'
+import FiltroFecha from '../components/FiltroFecha'
+import { getRangoFecha } from '../hooks/useFiltroFecha'
 
 const glass = { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }
 
@@ -13,6 +15,7 @@ export default function Dashboard({ esAdmin, session }) {
   const [filtroVendedor, setFiltroVendedor] = useState('')
   const [vendedores, setVendedores] = useState([])
   const [loading, setLoading] = useState(true)
+  const [filtroFecha, setFiltroFecha] = useState('mes')
 
   useEffect(() => {
     fetchDatos()
@@ -22,22 +25,21 @@ export default function Dashboard({ esAdmin, session }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'productos' }, fetchDatos)
       .subscribe()
     return () => supabase.removeChannel(channel)
-  }, [esAdmin, filtroVendedor])
+  }, [esAdmin, filtroVendedor, filtroFecha])
 
   const fetchVendedores = async () => {
-  const { data } = await supabase
-    .from('perfiles')
-    .select('id, nombre, apellido')
-    .eq('rol', 'vendedor')
-    .order('nombre')
-  setVendedores(data || [])
-}
+    const { data } = await supabase
+      .from('perfiles')
+      .select('id, nombre, apellido')
+      .eq('rol', 'vendedor')
+      .order('nombre')
+    setVendedores(data || [])
+  }
 
   const fetchDatos = async () => {
     const ahora = new Date()
+    const desde = getRangoFecha(filtroFecha) || new Date(0).toISOString()
     const inicioHoy = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate()).toISOString()
-    const inicioMes = new Date(ahora.getFullYear(), ahora.getMonth(), 1).toISOString()
-    const inicioSemana = new Date(ahora - 7 * 24 * 60 * 60 * 1000).toISOString()
 
     // Base query — si es vendedor filtra por su ID, si es admin filtra por vendedor seleccionado
     const filtroId = esAdmin ? filtroVendedor : session.user.id
@@ -56,12 +58,12 @@ export default function Dashboard({ esAdmin, session }) {
       { data: todasVentasMes }
     ] = await Promise.all([
       buildQuery(supabase.from('ventas').select('total').gte('created_at', inicioHoy)),
-      buildQuery(supabase.from('ventas').select('total').gte('created_at', inicioMes)),
+      buildQuery(supabase.from('ventas').select('total').gte('created_at', desde)),
       supabase.from('productos').select('stock, stock_minimo'),
-      buildQuery(supabase.from('ventas').select('cantidad, productos(nombre)').gte('created_at', inicioMes)),
-      buildQuery(supabase.from('ventas').select('total, created_at').gte('created_at', inicioSemana)),
+      buildQuery(supabase.from('ventas').select('cantidad, productos(nombre)').gte('created_at', desde)),
+      buildQuery(supabase.from('ventas').select('total, created_at').gte('created_at', desde)),
       esAdmin && !filtroVendedor
-        ? supabase.from('ventas').select('usuario_id, total, perfiles!inner(nombre, apellido)').gte('created_at', inicioMes)
+        ? supabase.from('ventas').select('usuario_id, total').gte('created_at', desde)
         : { data: null }
     ])
 
@@ -143,43 +145,45 @@ export default function Dashboard({ esAdmin, session }) {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-xl font-semibold text-white">Dashboard</h2>
-          <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
-            {esAdmin ? 'Vista general del negocio' : 'Tu rendimiento personal'}
-          </p>
-        </div>
-
-        {/* Filtro por vendedor — solo admin */}
-        {esAdmin && (
-          <div className="flex items-center gap-2">
-            <select
-              value={filtroVendedor}
-              onChange={e => setFiltroVendedor(e.target.value)}
-              style={{
-                background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
-                borderRadius: '12px', padding: '8px 14px', fontSize: '12px',
-                color: filtroVendedor ? '#fff' : 'rgba(255,255,255,0.4)',
-                outline: 'none', appearance: 'none', cursor: 'pointer'
-              }}>
-              <option value="" style={{ background: '#1a1040' }}>Todos los vendedores</option>
-              {vendedores.map(v => (
-                <option key={v.id} value={v.id} style={{ background: '#1a1040' }}>
-                  {v.nombre} {v.apellido}
-                </option>
-              ))}
-            </select>
-            {filtroVendedor && (
-              <button onClick={() => setFiltroVendedor('')}
-                className="text-xs px-3 py-2 rounded-xl"
-                style={{ border: '1px solid rgba(251,113,133,0.3)', color: '#fb7185', background: 'rgba(251,113,133,0.08)' }}>
-                Limpiar
-              </button>
-            )}
+      <div>
+        <div className="flex items-center justify-between mb-3">
+          <div>
+            <h2 className="text-xl font-semibold text-white">Dashboard</h2>
+            <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+              {esAdmin ? 'Vista general del negocio' : 'Tu rendimiento personal'}
+            </p>
           </div>
-        )}
+          {esAdmin && (
+            <div className="flex items-center gap-2">
+              <select value={filtroVendedor} onChange={e => setFiltroVendedor(e.target.value)}
+                style={{
+                  background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
+                  borderRadius: '12px', padding: '8px 14px', fontSize: '12px',
+                  color: filtroVendedor ? '#fff' : 'rgba(255,255,255,0.4)',
+                  outline: 'none', appearance: 'none', cursor: 'pointer'
+                }}>
+                <option value="" style={{ background: '#1a1040' }}>Todos los vendedores</option>
+                {vendedores.map(v => (
+                  <option key={v.id} value={v.id} style={{ background: '#1a1040' }}>
+                    {v.nombre} {v.apellido}
+                  </option>
+                ))}
+              </select>
+              {filtroVendedor && (
+                <button onClick={() => setFiltroVendedor('')}
+                  className="text-xs px-3 py-2 rounded-xl"
+                  style={{ border: '1px solid rgba(251,113,133,0.3)', color: '#fb7185', background: 'rgba(251,113,133,0.08)' }}>
+                  Limpiar
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+        <div style={{ overflowX: 'auto', paddingBottom: '4px' }}>
+          <FiltroFecha valor={filtroFecha} onChange={setFiltroFecha} />
+        </div>
       </div>
+
 
       {/* Tarjetas */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">

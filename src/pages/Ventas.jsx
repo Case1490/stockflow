@@ -4,6 +4,8 @@ import { Plus, ShoppingCart, Trash2, X } from 'lucide-react'
 import toast from 'react-hot-toast'
 import jsPDF from 'jspdf'
 import autoTable from 'jspdf-autotable'
+import FiltroFecha from '../components/FiltroFecha'
+import { getRangoFecha } from '../hooks/useFiltroFecha'
 
 const glass = { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }
 const inputStyle = { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '6px 10px', fontSize: '12px', color: '#fff', outline: 'none', width: '60px', textAlign: 'center' }
@@ -17,6 +19,7 @@ export default function Ventas({ esAdmin }) {
   const [carrito, setCarrito] = useState([])
   const [guardando, setGuardando] = useState(false)
   const [filtroVendedor, setFiltroVendedor] = useState('')
+  const [filtroFecha, setFiltroFecha] = useState('mes')
 
   useEffect(() => {
     fetchVentas()
@@ -26,17 +29,19 @@ export default function Ventas({ esAdmin }) {
       .on('postgres_changes', { event: '*', schema: 'public', table: 'ventas' }, fetchVentas)
       .subscribe()
     return () => supabase.removeChannel(channel)
-  }, [esAdmin])
+  }, [esAdmin, filtroFecha])
 
   const fetchVentas = async () => {
-    const { data, error } = await supabase
+    const desde = getRangoFecha(filtroFecha)
+    let query = supabase
       .from('ventas')
       .select('*, productos(nombre, precio)')
       .order('created_at', { ascending: false })
 
-    if (error) { console.log('ERROR:', error); setLoading(false); return }
+    if (desde) query = query.gte('created_at', desde)
 
-    // Obtener nombres de perfiles por separado
+    const { data } = await query
+
     const usuarioIds = [...new Set((data || []).map(v => v.usuario_id).filter(Boolean))]
     let perfilesMap = {}
     if (usuarioIds.length > 0) {
@@ -47,12 +52,7 @@ export default function Ventas({ esAdmin }) {
       perfilesData?.forEach(p => { perfilesMap[p.id] = p })
     }
 
-    const ventasConPerfil = (data || []).map(v => ({
-      ...v,
-      perfil: perfilesMap[v.usuario_id] || null
-    }))
-
-    setVentas(ventasConPerfil)
+    setVentas((data || []).map(v => ({ ...v, perfil: perfilesMap[v.usuario_id] || null })))
     setLoading(false)
   }
 
@@ -263,34 +263,34 @@ export default function Ventas({ esAdmin }) {
         </div>
       </div>
 
-      {/* Filtro por vendedor — solo admin */}
-      {esAdmin && (
-        <div className="mb-4 flex items-center gap-3">
-          <select
-            value={filtroVendedor}
-            onChange={e => setFiltroVendedor(e.target.value)}
-            style={{
-              background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: '12px', padding: '8px 14px', fontSize: '12px',
-              color: filtroVendedor ? '#fff' : 'rgba(255,255,255,0.4)',
-              outline: 'none', appearance: 'none', cursor: 'pointer'
-            }}>
-            <option value="" style={{ background: '#1a1040' }}>Todos los vendedores</option>
-            {vendedores.map(v => (
-              <option key={v.id} value={v.id} style={{ background: '#1a1040' }}>
-                {v.nombre} {v.apellido}
-              </option>
-            ))}
-          </select>
-          {filtroVendedor && (
-            <button onClick={() => setFiltroVendedor('')}
-              className="text-xs px-3 py-2 rounded-xl transition-all"
-              style={{ border: '1px solid rgba(251,113,133,0.3)', color: '#fb7185', background: 'rgba(251,113,133,0.08)' }}>
-              Limpiar
-            </button>
-          )}
-        </div>
-      )}
+      <div className="mb-4 flex items-center justify-between flex-wrap gap-3">
+        <FiltroFecha valor={filtroFecha} onChange={setFiltroFecha} />
+        {esAdmin && (
+          <div className="flex items-center gap-2">
+            <select value={filtroVendedor} onChange={e => setFiltroVendedor(e.target.value)}
+              style={{
+                background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
+                borderRadius: '12px', padding: '8px 14px', fontSize: '12px',
+                color: filtroVendedor ? '#fff' : 'rgba(255,255,255,0.4)',
+                outline: 'none', appearance: 'none', cursor: 'pointer'
+              }}>
+              <option value="" style={{ background: '#1a1040' }}>Todos los vendedores</option>
+              {vendedores.map(v => (
+                <option key={v.id} value={v.id} style={{ background: '#1a1040' }}>
+                  {v.nombre} {v.apellido}
+                </option>
+              ))}
+            </select>
+            {filtroVendedor && (
+              <button onClick={() => setFiltroVendedor('')}
+                className="text-xs px-3 py-2 rounded-xl"
+                style={{ border: '1px solid rgba(251,113,133,0.3)', color: '#fb7185', background: 'rgba(251,113,133,0.08)' }}>
+                Limpiar
+              </button>
+            )}
+          </div>
+        )}
+      </div>
 
       {/* Tabla de ventas */}
       {loading ? (
