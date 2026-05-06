@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import { supabase } from '../supabaseClient'
 import { Plus, ShoppingCart, Trash2, X } from 'lucide-react'
 import toast from 'react-hot-toast'
+import jsPDF from 'jspdf'
+import autoTable from 'jspdf-autotable'
 
 const glass = { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }
 const inputStyle = { background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '10px', padding: '6px 10px', fontSize: '12px', color: '#fff', outline: 'none', width: '60px', textAlign: 'center' }
@@ -129,6 +131,104 @@ export default function Ventas({ esAdmin }) {
 
   const itemsEnCarrito = carrito.reduce((acc, i) => acc + i.cantidad, 0)
 
+  const exportarPDF = () => {
+    const doc = new jsPDF()
+    const ahora = new Date()
+    const fechaStr = ahora.toLocaleDateString('es-PE', { day: '2-digit', month: '2-digit', year: 'numeric' })
+
+    // Header
+    doc.setFillColor(15, 12, 41)
+    doc.rect(0, 0, 220, 40, 'F')
+    doc.setTextColor(45, 212, 191)
+    doc.setFontSize(20)
+    doc.setFont('helvetica', 'bold')
+    doc.text('StockFlow', 14, 18)
+    doc.setFontSize(10)
+    doc.setTextColor(180, 180, 200)
+    doc.setFont('helvetica', 'normal')
+    doc.text('Reporte de ventas', 14, 26)
+    doc.text(`Generado el ${fechaStr}`, 14, 33)
+
+    // Filtro activo
+    if (filtroVendedor) {
+      const vendedor = vendedores.find(v => v.id === filtroVendedor)
+      if (vendedor) {
+        doc.setTextColor(45, 212, 191)
+        doc.text(`Vendedor: ${vendedor.nombre} ${vendedor.apellido}`, 140, 26)
+      }
+    }
+
+    // Stats resumen
+    doc.setFillColor(240, 240, 250)
+    doc.rect(14, 45, 55, 18, 'F')
+    doc.rect(74, 45, 55, 18, 'F')
+    doc.rect(134, 45, 55, 18, 'F')
+
+    doc.setTextColor(100, 100, 130)
+    doc.setFontSize(8)
+    doc.text('TOTAL TRANSACCIONES', 16, 51)
+    doc.text('INGRESOS TOTALES', 76, 51)
+    doc.text('PROMEDIO POR VENTA', 136, 51)
+
+    doc.setTextColor(15, 12, 41)
+    doc.setFontSize(14)
+    doc.setFont('helvetica', 'bold')
+    doc.text(`${ventasFiltradas.length}`, 16, 60)
+    doc.text(`S/ ${totalFiltrado.toFixed(2)}`, 76, 60)
+    const promedio = ventasFiltradas.length > 0 ? totalFiltrado / ventasFiltradas.length : 0
+    doc.text(`S/ ${promedio.toFixed(2)}`, 136, 60)
+
+    // Tabla
+    const columnas = esAdmin
+      ? ['Producto', 'Vendedor', 'Cant.', 'P. Unit.', 'Total', 'Fecha']
+      : ['Producto', 'Cant.', 'P. Unit.', 'Total', 'Fecha']
+
+    const filas = ventasFiltradas.map(v => {
+      const nombreProducto = v.productos?.nombre || v.producto_nombre || 'Producto eliminado'
+      const fecha = new Date(v.created_at).toLocaleDateString('es-PE', {
+        day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit'
+      })
+      if (esAdmin) {
+        return [
+          nombreProducto,
+          `${v.perfil?.nombre || ''} ${v.perfil?.apellido || ''}`.trim() || '—',
+          v.cantidad,
+          `S/ ${Number(v.precio_unitario).toFixed(2)}`,
+          `S/ ${Number(v.total).toFixed(2)}`,
+          fecha
+        ]
+      }
+      return [
+        nombreProducto,
+        v.cantidad,
+        `S/ ${Number(v.precio_unitario).toFixed(2)}`,
+        `S/ ${Number(v.total).toFixed(2)}`,
+        fecha
+      ]
+    })
+
+    autoTable(doc, {
+      head: [columnas],
+      body: filas,
+      startY: 70,
+      styles: { fontSize: 9, cellPadding: 4 },
+      headStyles: { fillColor: [15, 12, 41], textColor: [45, 212, 191], fontStyle: 'bold' },
+      alternateRowStyles: { fillColor: [248, 248, 252] },
+      columnStyles: { 0: { cellWidth: esAdmin ? 45 : 60 } },
+      foot: [[
+        ...(esAdmin ? ['', '', '', '', `S/ ${totalFiltrado.toFixed(2)}`, ''] : ['', '', '', `S/ ${totalFiltrado.toFixed(2)}`, ''])
+      ]],
+      footStyles: { fillColor: [15, 12, 41], textColor: [45, 212, 191], fontStyle: 'bold' }
+    })
+
+    // Nombre del archivo
+    const vendedorNombre = filtroVendedor
+      ? vendedores.find(v => v.id === filtroVendedor)?.nombre || 'vendedor'
+      : 'todos'
+    doc.save(`ventas_${vendedorNombre}_${fechaStr.replace(/\//g, '-')}.pdf`)
+    toast.success('Reporte exportado ✓')
+  }
+
   return (
     <div>
       <div className="flex items-center justify-between mb-6">
@@ -141,17 +241,26 @@ export default function Ventas({ esAdmin }) {
             )}
           </p>
         </div>
-        <button onClick={() => setCarritoOpen(true)}
-          className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium text-white relative"
-          style={{ background: 'linear-gradient(135deg, #0d9488, #2dd4bf)' }}>
-          <ShoppingCart size={14} /> Nueva venta
-          {itemsEnCarrito > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-xs flex items-center justify-center font-bold"
-              style={{ background: '#fb7185', fontSize: '10px' }}>
-              {itemsEnCarrito}
-            </span>
+        <div className="flex items-center gap-2">
+          {ventasFiltradas.length > 0 && (
+            <button onClick={exportarPDF}
+              className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium transition-all"
+              style={{ border: '1px solid rgba(45,212,191,0.3)', color: '#2dd4bf', background: 'rgba(45,212,191,0.08)' }}>
+              📄 Exportar PDF
+            </button>
           )}
-        </button>
+          <button onClick={() => setCarritoOpen(true)}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium text-white relative"
+            style={{ background: 'linear-gradient(135deg, #0d9488, #2dd4bf)' }}>
+            <ShoppingCart size={14} /> Nueva venta
+            {itemsEnCarrito > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full text-xs flex items-center justify-center font-bold"
+                style={{ background: '#fb7185', fontSize: '10px' }}>
+                {itemsEnCarrito}
+              </span>
+            )}
+          </button>
+        </div>
       </div>
 
       {/* Filtro por vendedor — solo admin */}
