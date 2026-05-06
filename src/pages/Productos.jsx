@@ -4,9 +4,6 @@ import { Plus, Pencil, Trash2, AlertTriangle, Package, Search } from 'lucide-rea
 import toast from 'react-hot-toast'
 import ModalConfirm from '../components/ModalConfirm'
 
-const glass = { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }
-const inputStyle = { width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '12px', padding: '9px 14px', fontSize: '13px', color: '#fff', outline: 'none' }
-
 export default function Productos({ esAdmin = false }) {
   const [productos, setProductos] = useState([])
   const [loading, setLoading] = useState(true)
@@ -21,6 +18,12 @@ export default function Productos({ esAdmin = false }) {
   const [modalConfirm, setModalConfirm] = useState(false)
   const [eliminando, setEliminando] = useState(false)
   const [productoAEliminar, setProductoAEliminar] = useState(null)
+
+  const inputStyle = {
+    width: '100%', background: 'var(--bg-input)',
+    border: '1px solid var(--border-input)', borderRadius: '12px',
+    padding: '9px 14px', fontSize: '13px', color: 'var(--text-primary)', outline: 'none'
+  }
 
   useEffect(() => {
     fetchProductos()
@@ -95,73 +98,52 @@ export default function Productos({ esAdmin = false }) {
       return 0
     })
 
+  const selectStyle = {
+    background: 'var(--bg-input)', border: '1px solid var(--border-input)',
+    borderRadius: '12px', padding: '8px 14px', fontSize: '12px',
+    color: 'var(--text-secondary)', outline: 'none', appearance: 'none', cursor: 'pointer'
+  }
+
   return (
     <div>
       <div className="mb-6 space-y-3">
         <div className="flex items-center justify-between">
           <div>
-            <h2 className="text-xl font-semibold text-white">Productos</h2>
-            <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Productos</h2>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
               {productosFiltrados.length} de {productos.length} productos
             </p>
           </div>
           {esAdmin && (
             <button onClick={() => abrirModal()}
               className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-medium text-white"
-              style={{ background: 'linear-gradient(135deg, #0d9488, #2dd4bf)' }}>
+              style={{ background: 'var(--accent-gradient)' }}>
               <Plus size={14} /> Nuevo producto
             </button>
           )}
         </div>
 
-        {/* Barra de búsqueda y filtros */}
         <div className="flex gap-2 flex-wrap">
           <div className="flex-1 min-w-48 relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'rgba(255,255,255,0.3)' }} />
-            <input
-              placeholder="Buscar productos..."
-              value={busqueda}
-              onChange={e => setBusqueda(e.target.value)}
-              style={{
-                width: '100%', background: 'rgba(255,255,255,0.07)',
-                border: '1px solid rgba(255,255,255,0.12)', borderRadius: '12px',
-                padding: '8px 14px 8px 32px', fontSize: '12px', color: '#fff', outline: 'none'
-              }}
-            />
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--text-muted)' }} />
+            <input placeholder="Buscar productos..." value={busqueda} onChange={e => setBusqueda(e.target.value)}
+              style={{ ...inputStyle, padding: '8px 14px 8px 32px', fontSize: '12px' }} />
           </div>
-
-          <select
-            value={filtroCategoria}
-            onChange={e => setFiltroCategoria(e.target.value)}
-            style={{
-              background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: '12px', padding: '8px 14px', fontSize: '12px', color: filtroCategoria ? '#fff' : 'rgba(255,255,255,0.35)',
-              outline: 'none', appearance: 'none', cursor: 'pointer'
-            }}>
-            <option value="" style={{ background: '#1a1040' }}>Todas las categorías</option>
-            {categorias.map(c => <option key={c} value={c} style={{ background: '#1a1040' }}>{c}</option>)}
+          <select value={filtroCategoria} onChange={e => setFiltroCategoria(e.target.value)} style={selectStyle}>
+            <option value="" style={{ background: 'var(--bg-modal)' }}>Todas las categorías</option>
+            {categorias.map(c => <option key={c} value={c} style={{ background: 'var(--bg-modal)' }}>{c}</option>)}
           </select>
-
-          <select
-            value={ordenar}
-            onChange={e => setOrdenar(e.target.value)}
-            style={{
-              background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
-              borderRadius: '12px', padding: '8px 14px', fontSize: '12px', color: 'rgba(255,255,255,0.6)',
-              outline: 'none', appearance: 'none', cursor: 'pointer'
-            }}>
-            <option value="reciente" style={{ background: '#1a1040' }}>Más recientes</option>
-            <option value="nombre" style={{ background: '#1a1040' }}>Nombre A-Z</option>
-            <option value="precio_asc" style={{ background: '#1a1040' }}>Precio: menor a mayor</option>
-            <option value="precio_desc" style={{ background: '#1a1040' }}>Precio: mayor a menor</option>
-            <option value="stock" style={{ background: '#1a1040' }}>Menor stock primero</option>
+          <select value={ordenar} onChange={e => setOrdenar(e.target.value)} style={selectStyle}>
+            <option value="reciente" style={{ background: 'var(--bg-modal)' }}>Más recientes</option>
+            <option value="nombre" style={{ background: 'var(--bg-modal)' }}>Nombre A-Z</option>
+            <option value="precio_asc" style={{ background: 'var(--bg-modal)' }}>Precio: menor a mayor</option>
+            <option value="precio_desc" style={{ background: 'var(--bg-modal)' }}>Precio: mayor a menor</option>
+            <option value="stock" style={{ background: 'var(--bg-modal)' }}>Menor stock primero</option>
           </select>
-
           {(busqueda || filtroCategoria) && (
-            <button
-              onClick={() => { setBusqueda(''); setFiltroCategoria('') }}
-              className="px-3 py-2 rounded-xl text-xs transition-all"
-              style={{ border: '1px solid rgba(251,113,133,0.3)', color: '#fb7185', background: 'rgba(251,113,133,0.08)' }}>
+            <button onClick={() => { setBusqueda(''); setFiltroCategoria('') }}
+              className="px-3 py-2 rounded-xl text-xs"
+              style={{ border: '1px solid var(--danger-border)', color: 'var(--danger)', background: 'var(--danger-bg)' }}>
               Limpiar
             </button>
           )}
@@ -170,54 +152,58 @@ export default function Productos({ esAdmin = false }) {
 
       {loading ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {[...Array(3)].map((_, i) => <div key={i} className="h-64 rounded-2xl animate-pulse" style={{ background: 'rgba(255,255,255,0.06)' }} />)}
+          {[...Array(3)].map((_, i) => (
+            <div key={i} className="h-64 rounded-2xl animate-pulse" style={{ background: 'var(--bg-card)' }} />
+          ))}
         </div>
       ) : productosFiltrados.length === 0 ? (
-        <div className="text-center py-24" style={{ color: 'rgba(255,255,255,0.2)' }}>
-          <Search size={40} className="mx-auto mb-3" />
+        <div className="text-center py-24" style={{ color: 'var(--text-muted)' }}>
+          <Search size={40} className="mx-auto mb-3 opacity-30" />
           <p className="text-sm">{busqueda || filtroCategoria ? 'Sin resultados para tu búsqueda' : 'No hay productos aún'}</p>
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {productosFiltrados.map(p => (
-            <div key={p.id} className="rounded-2xl overflow-hidden" style={glass}>
+            <div key={p.id} className="rounded-2xl overflow-hidden"
+              style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)' }}>
               {p.imagen_url
                 ? <img src={p.imagen_url} alt={p.nombre} className="w-full h-44 object-cover" />
-                : <div className="w-full h-44 flex items-center justify-center" style={{ background: 'rgba(255,255,255,0.03)' }}>
-                  <Package size={32} style={{ color: 'rgba(255,255,255,0.1)' }} />
-                </div>
+                : <div className="w-full h-44 flex items-center justify-center"
+                    style={{ background: 'var(--bg-input)' }}>
+                    <Package size={32} style={{ color: 'var(--border-card)' }} />
+                  </div>
               }
               <div className="p-4">
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div>
-                    <h3 className="text-sm font-medium text-white">{p.nombre}</h3>
-                    {p.categoria && <span className="text-xs" style={{ color: 'rgba(255,255,255,0.35)' }}>{p.categoria}</span>}
+                    <h3 className="text-sm font-medium" style={{ color: 'var(--text-primary)' }}>{p.nombre}</h3>
+                    {p.categoria && <span className="text-xs" style={{ color: 'var(--text-muted)' }}>{p.categoria}</span>}
                   </div>
                   {p.stock <= p.stock_minimo && (
                     <span className="flex items-center gap-1 text-xs px-2 py-0.5 rounded-full shrink-0"
-                      style={{ background: 'rgba(251,113,133,0.15)', color: '#fb7185', border: '1px solid rgba(251,113,133,0.2)' }}>
+                      style={{ background: 'var(--danger-bg)', color: 'var(--danger)', border: '1px solid var(--danger-border)' }}>
                       <AlertTriangle size={10} /> Bajo
                     </span>
                   )}
                 </div>
                 <div className="flex items-center justify-between mb-3">
-                  <p className="font-semibold" style={{ color: '#2dd4bf' }}>S/ {Number(p.precio).toFixed(2)}</p>
-                  <p className="text-xs" style={{ color: 'rgba(255,255,255,0.3)' }}>{p.stock} en stock</p>
+                  <p className="font-semibold" style={{ color: 'var(--accent)' }}>S/ {Number(p.precio).toFixed(2)}</p>
+                  <p className="text-xs" style={{ color: 'var(--text-muted)' }}>{p.stock} en stock</p>
                 </div>
                 {esAdmin && (
-                  <div className="flex gap-2 pt-3" style={{ borderTop: '1px solid rgba(255,255,255,0.07)' }}>
-                    <button onClick={() => abrirModal(p)} className="flex-1 flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-lg transition-all"
-                      style={{ color: 'rgba(255,255,255,0.5)', background: 'rgba(255,255,255,0.05)' }}>
+                  <div className="flex gap-2 pt-3" style={{ borderTop: '1px solid var(--border-card)' }}>
+                    <button onClick={() => abrirModal(p)}
+                      className="flex-1 flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-lg transition-all"
+                      style={{ color: 'var(--text-secondary)', background: 'var(--bg-input)' }}>
                       <Pencil size={11} /> Editar
                     </button>
                     <button onClick={() => { setProductoAEliminar(p); setModalConfirm(true) }}
                       className="flex-1 flex items-center justify-center gap-1.5 text-xs py-1.5 rounded-lg transition-all"
-                      style={{ color: '#fb7185', background: 'rgba(251,113,133,0.08)' }}>
+                      style={{ color: 'var(--danger)', background: 'var(--danger-bg)' }}>
                       <Trash2 size={11} /> Eliminar
                     </button>
                   </div>
                 )}
-
               </div>
             </div>
           ))}
@@ -225,9 +211,13 @@ export default function Productos({ esAdmin = false }) {
       )}
 
       {modalOpen && (
-        <div className="fixed inset-0 flex items-center justify-center z-50" style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(6px)' }}>
-          <div className="w-full max-w-md mx-4 rounded-2xl p-6" style={{ background: 'rgba(20,16,50,0.95)', border: '1px solid rgba(255,255,255,0.12)' }}>
-            <h3 className="text-sm font-semibold text-white mb-5">{editando ? 'Editar producto' : 'Nuevo producto'}</h3>
+        <div className="fixed inset-0 flex items-center justify-center z-50"
+          style={{ background: 'var(--overlay)', backdropFilter: 'blur(6px)' }}>
+          <div className="w-full max-w-md mx-4 rounded-2xl p-6"
+            style={{ background: 'var(--bg-modal)', border: '1px solid var(--border-modal)' }}>
+            <h3 className="text-sm font-semibold mb-5" style={{ color: 'var(--text-primary)' }}>
+              {editando ? 'Editar producto' : 'Nuevo producto'}
+            </h3>
             <div className="space-y-2.5">
               <input placeholder="Nombre *" value={form.nombre} onChange={e => setForm({ ...form, nombre: e.target.value })} style={inputStyle} />
               <input placeholder="Categoría" value={form.categoria} onChange={e => setForm({ ...form, categoria: e.target.value })} style={inputStyle} />
@@ -238,17 +228,20 @@ export default function Productos({ esAdmin = false }) {
                 <input placeholder="Mín." type="number" value={form.stock_minimo} onChange={e => setForm({ ...form, stock_minimo: e.target.value })} style={inputStyle} />
               </div>
               <div style={{ ...inputStyle, padding: '8px 14px' }}>
-                <p className="text-xs mb-1" style={{ color: 'rgba(255,255,255,0.35)' }}>Imagen</p>
-                <input type="file" accept="image/*" onChange={e => setImagen(e.target.files[0])} style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }} />
+                <p className="text-xs mb-1" style={{ color: 'var(--text-muted)' }}>Imagen</p>
+                <input type="file" accept="image/*" onChange={e => setImagen(e.target.files[0])}
+                  style={{ fontSize: '12px', color: 'var(--text-muted)' }} />
               </div>
             </div>
             <div className="flex gap-2 mt-5">
-              <button onClick={() => setModalOpen(false)} className="flex-1 py-2.5 rounded-xl text-xs transition-all"
-                style={{ border: '1px solid rgba(255,255,255,0.12)', color: 'rgba(255,255,255,0.5)' }}>
+              <button onClick={() => setModalOpen(false)}
+                className="flex-1 py-2.5 rounded-xl text-xs transition-all"
+                style={{ border: '1px solid var(--border-input)', color: 'var(--text-secondary)' }}>
                 Cancelar
               </button>
-              <button onClick={guardarProducto} disabled={guardando} className="flex-1 py-2.5 rounded-xl text-xs font-medium text-white transition-all"
-                style={{ background: 'linear-gradient(135deg, #0d9488, #2dd4bf)', opacity: guardando ? 0.6 : 1 }}>
+              <button onClick={guardarProducto} disabled={guardando}
+                className="flex-1 py-2.5 rounded-xl text-xs font-medium text-white transition-all"
+                style={{ background: 'var(--accent-gradient)', opacity: guardando ? 0.6 : 1 }}>
                 {guardando ? 'Guardando...' : 'Guardar'}
               </button>
             </div>
