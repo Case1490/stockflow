@@ -2,6 +2,7 @@ import { Outlet, NavLink, useNavigate } from 'react-router-dom'
 import { supabase } from '../supabaseClient'
 import { LayoutDashboard, Package, ShoppingCart, LogOut, UserCircle, Users } from 'lucide-react'
 import { Toaster } from 'react-hot-toast'
+import InstallPWA from './InstallPWA'
 import { useEffect, useState } from 'react'
 
 export default function Layout({ session, rol }) {
@@ -140,6 +141,7 @@ export default function Layout({ session, rol }) {
           </nav>
         )}
       </div>
+      <InstallPWA />
     </div>
   )
 }
