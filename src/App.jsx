@@ -27,8 +27,8 @@ export default function App() {
   if (session === undefined || (session && rolLoading)) return (
     <div style={{
       display: 'flex', alignItems: 'center', justifyContent: 'center',
-      height: '100vh', background: 'linear-gradient(135deg, #0f0c29, #1a1040, #24243e)',
-      color: 'rgba(255,255,255,0.4)', fontSize: '13px'
+      height: '100vh', background: 'var(--bg-app)',
+      color: 'var(--text-muted)', fontSize: '13px'
     }}>
       Cargando...
     </div>
