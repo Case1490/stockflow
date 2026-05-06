@@ -75,10 +75,7 @@ export default function Login() {
 
       <div className="w-full max-w-sm px-4">
         <div className="text-center mb-8">
-          <div className="w-12 h-12 rounded-2xl flex items-center justify-center mx-auto mb-4 text-xl"
-            style={{ background: 'linear-gradient(135deg, #0d9488, #2dd4bf)' }}>
-            📦
-          </div>
+          <img src="/icons/icon-192.png" alt="StockFlow" style={{ width: '48px', height: '48px', borderRadius: '16px', objectFit: 'cover', margin: '0 auto 16px' }} />
           <h1 className="text-2xl font-semibold text-white">StockFlow</h1>
           <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.35)' }}>
             {isRegister ? 'Crea tu cuenta' : 'Bienvenido de vuelta'}

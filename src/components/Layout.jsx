@@ -33,7 +33,7 @@ export default function Layout({ session, rol }) {
     <>
       <div style={{ padding: '0 12px 16px', marginBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
-          <div style={{ width: '28px', height: '28px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', background: 'linear-gradient(135deg, #0d9488, #2dd4bf)' }}>📦</div>
+          <img src="/icons/icon-192.png" alt="StockFlow" style={{ width: '28px', height: '28px', borderRadius: '8px', objectFit: 'cover' }} />
           <div>
             <span style={{ fontSize: '13px', fontWeight: 600, color: '#fff', display: 'block' }}>StockFlow</span>
             <span style={{ fontSize: '10px', color: esAdmin ? '#2dd4bf' : 'rgba(255,255,255,0.35)' }}>
@@ -104,7 +104,7 @@ export default function Layout({ session, rol }) {
             borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-              <div style={{ width: '28px', height: '28px', borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '14px', background: 'linear-gradient(135deg, #0d9488, #2dd4bf)' }}>📦</div>
+              <img src="/icons/icon-192.png" alt="StockFlow" style={{ width: '28px', height: '28px', borderRadius: '8px', objectFit: 'cover' }} />
               <span style={{ fontSize: '13px', fontWeight: 600, color: '#fff' }}>StockFlow</span>
             </div>
             <button onClick={handleLogout} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(251,113,133,0.6)' }}>
