@@ -3,6 +3,8 @@ import { supabase } from '../supabaseClient'
 import { usePerfil } from '../hooks/usePerfil'
 import { Camera, Save, Mail, User } from 'lucide-react'
 import toast from 'react-hot-toast'
+import { useTema } from '../context/ThemeContext'
+import { Sun, Moon } from 'lucide-react'
 
 const glass = { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }
 const inputStyle = { width: '100%', background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)', borderRadius: '12px', padding: '10px 14px', fontSize: '13px', color: '#fff', outline: 'none' }
@@ -15,6 +17,8 @@ export default function Perfil({ session }) {
     const [preview, setPreview] = useState(null)
     const [archivo, setArchivo] = useState(null)
     const [iniciado, setIniciado] = useState(false)
+
+    const { isDark, toggleTema } = useTema()
 
     // Inicializar form con datos del perfil
     if (perfil && !iniciado) {
@@ -128,6 +132,31 @@ export default function Perfil({ session }) {
                             style={{ ...inputStyle, paddingLeft: '32px', opacity: 0.4, cursor: 'not-allowed' }} />
                     </div>
                     <p className="text-xs mt-1" style={{ color: 'rgba(255,255,255,0.25)' }}>El email no se puede cambiar</p>
+                </div>
+
+                <div style={{ borderTop: `1px solid var(--border-card)`, paddingTop: '16px', marginTop: '4px' }}>
+                    <p className="text-xs uppercase tracking-wide mb-3" style={{ color: 'var(--text-muted)' }}>Apariencia</p>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderRadius: '12px', background: 'var(--bg-card)', border: `1px solid var(--border-card)` }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            {isDark ? <Moon size={15} style={{ color: 'var(--accent-light)' }} /> : <Sun size={15} style={{ color: 'var(--amber)' }} />}
+                            <div>
+                                <p style={{ fontSize: '13px', fontWeight: 500, color: 'var(--text-primary)' }}>
+                                    {isDark ? 'Modo oscuro' : 'Modo claro'}
+                                </p>
+                                <p style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Cambia la apariencia de la app</p>
+                            </div>
+                        </div>
+                        <button onClick={toggleTema} style={{
+                            width: '44px', height: '24px', borderRadius: '12px', border: 'none', cursor: 'pointer',
+                            background: isDark ? 'var(--accent)' : '#cbd5e1', position: 'relative', transition: 'all 0.3s'
+                        }}>
+                            <div style={{
+                                width: '18px', height: '18px', borderRadius: '50%', background: '#fff',
+                                position: 'absolute', top: '3px', transition: 'all 0.3s',
+                                left: isDark ? '23px' : '3px'
+                            }} />
+                        </button>
+                    </div>
                 </div>
 
                 <button onClick={handleGuardar} disabled={guardando}

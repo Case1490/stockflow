@@ -5,8 +5,6 @@ import { ShoppingCart, Package, AlertTriangle, TrendingUp, Users } from 'lucide-
 import FiltroFecha from '../components/FiltroFecha'
 import { getRangoFecha } from '../hooks/useFiltroFecha'
 
-const glass = { background: 'rgba(255,255,255,0.06)', border: '1px solid rgba(255,255,255,0.1)', backdropFilter: 'blur(10px)' }
-
 export default function Dashboard({ esAdmin, session }) {
   const [stats, setStats] = useState({ totalVentasHoy: 0, totalVentasMes: 0, totalProductos: 0, stockBajo: 0, totalVendedores: 0 })
   const [grafica, setGrafica] = useState([])
@@ -90,9 +88,20 @@ export default function Dashboard({ esAdmin, session }) {
 
     // Top vendedores (solo admin sin filtro)
     if (esAdmin && !filtroVendedor && todasVentasMes) {
+      const usuarioIds = [...new Set(todasVentasMes.map(v => v.usuario_id).filter(Boolean))]
+      let perfilesMap = {}
+      if (usuarioIds.length > 0) {
+        const { data: perfilesData } = await supabase
+          .from('perfiles')
+          .select('id, nombre, apellido')
+          .in('id', usuarioIds)
+        perfilesData?.forEach(p => { perfilesMap[p.id] = p })
+      }
+
       const conteoVendedores = {}
       todasVentasMes.forEach(v => {
-        const nombre = `${v.perfiles?.nombre || ''} ${v.perfiles?.apellido || ''}`.trim()
+        const perfil = perfilesMap[v.usuario_id]
+        const nombre = perfil ? `${perfil.nombre || ''} ${perfil.apellido || ''}`.trim() : 'Desconocido'
         if (!conteoVendedores[nombre]) conteoVendedores[nombre] = 0
         conteoVendedores[nombre] += Number(v.total)
       })
@@ -116,9 +125,9 @@ export default function Dashboard({ esAdmin, session }) {
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload?.length) return (
-      <div style={{ background: 'rgba(15,12,41,0.9)', border: '1px solid rgba(45,212,191,0.3)', borderRadius: '10px', padding: '8px 12px', fontSize: '12px', color: '#fff' }}>
-        <p style={{ color: 'rgba(255,255,255,0.5)', marginBottom: 2 }}>{label}</p>
-        <p style={{ color: '#2dd4bf', fontWeight: 600 }}>S/ {Number(payload[0].value).toFixed(2)}</p>
+      <div style={{ background: 'var(--bg-modal)', border: '1px solid var(--accent-border)', borderRadius: '10px', padding: '8px 12px', fontSize: '12px' }}>
+        <p style={{ color: 'var(--text-secondary)', marginBottom: 2 }}>{label}</p>
+        <p style={{ color: 'var(--accent)', fontWeight: 600 }}>S/ {Number(payload[0].value).toFixed(2)}</p>
       </div>
     )
     return null
@@ -148,8 +157,8 @@ export default function Dashboard({ esAdmin, session }) {
       <div>
         <div className="flex items-center justify-between mb-3">
           <div>
-            <h2 className="text-xl font-semibold text-white">Dashboard</h2>
-            <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>
+            <h2 className="text-xl font-semibold" style={{ color: 'var(--text-primary)' }}>Dashboard</h2>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-secondary)' }}>
               {esAdmin ? 'Vista general del negocio' : 'Tu rendimiento personal'}
             </p>
           </div>
@@ -157,14 +166,15 @@ export default function Dashboard({ esAdmin, session }) {
             <div className="flex items-center gap-2">
               <select value={filtroVendedor} onChange={e => setFiltroVendedor(e.target.value)}
                 style={{
-                  background: 'rgba(255,255,255,0.07)', border: '1px solid rgba(255,255,255,0.12)',
+                  background: 'var(--bg-input)',
+                  border: '1px solid var(--border-input)',
                   borderRadius: '12px', padding: '8px 14px', fontSize: '12px',
-                  color: filtroVendedor ? '#fff' : 'rgba(255,255,255,0.4)',
+                  color: filtroVendedor ? 'var(--text-primary)' : 'var(--text-muted)',
                   outline: 'none', appearance: 'none', cursor: 'pointer'
                 }}>
-                <option value="" style={{ background: '#1a1040' }}>Todos los vendedores</option>
+                <option value="" style={{ background: 'var(--bg-modal)' }}>Todos los vendedores</option>
                 {vendedores.map(v => (
-                  <option key={v.id} value={v.id} style={{ background: '#1a1040' }}>
+                  <option key={v.id} value={v.id} style={{ background: 'var(--bg-modal)' }}>
                     {v.nombre} {v.apellido}
                   </option>
                 ))}
@@ -172,7 +182,7 @@ export default function Dashboard({ esAdmin, session }) {
               {filtroVendedor && (
                 <button onClick={() => setFiltroVendedor('')}
                   className="text-xs px-3 py-2 rounded-xl"
-                  style={{ border: '1px solid rgba(251,113,133,0.3)', color: '#fb7185', background: 'rgba(251,113,133,0.08)' }}>
+                  style={{ border: '1px solid var(--danger-border)', color: 'var(--danger)', background: 'var(--danger-bg)' }}>
                   Limpiar
                 </button>
               )}
@@ -189,35 +199,36 @@ export default function Dashboard({ esAdmin, session }) {
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         {tarjetas.map((t, i) => (
           <div key={i} className="rounded-2xl p-4" style={{
-            ...glass,
-            ...(t.alert ? { border: '1px solid rgba(251,113,133,0.3)', background: 'rgba(251,113,133,0.08)' } : {})
+            background: t.alert ? 'var(--danger-bg)' : 'var(--bg-card)',
+            border: `1px solid ${t.alert ? 'var(--danger-border)' : 'var(--border-card)'}`,
+            backdropFilter: 'blur(10px)'
           }}>
             <div className="w-8 h-8 rounded-lg flex items-center justify-center mb-3" style={{ background: t.bg, color: t.color }}>
               {t.icon}
             </div>
-            <p className="text-lg font-semibold text-white">{t.value}</p>
-            <p className="text-xs mt-0.5" style={{ color: 'rgba(255,255,255,0.35)' }}>{t.label}</p>
+            <p className="text-lg font-semibold" style={{ color: t.alert ? 'var(--danger)' : 'var(--text-primary)' }}>{t.value}</p>
+            <p className="text-xs mt-0.5" style={{ color: 'var(--text-muted)' }}>{t.label}</p>
           </div>
         ))}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         {/* Gráfica */}
-        <div className="lg:col-span-2 rounded-2xl p-5" style={glass}>
-          <p className="text-xs font-medium mb-4" style={{ color: 'rgba(255,255,255,0.5)' }}>
+        <div className="lg:col-span-2 rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)', backdropFilter: 'blur(10px)' }}>
+          <p className="text-xs font-medium mb-4" style={{ color: 'var(--text-secondary)' }}>
             {esAdmin && !filtroVendedor ? 'Ventas globales — últimos 7 días' : 'Mis ventas — últimos 7 días'}
           </p>
           <ResponsiveContainer width="100%" height={200}>
             <BarChart data={grafica} barSize={24}>
-              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="rgba(255,255,255,0.05)" />
-              <XAxis dataKey="dia" tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.3)' }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fontSize: 10, fill: 'rgba(255,255,255,0.3)' }} axisLine={false} tickLine={false} />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="var(--border-card)" />
+              <XAxis dataKey="dia" tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fontSize: 10, fill: 'var(--text-muted)' }} axisLine={false} tickLine={false} />
               <Tooltip content={<CustomTooltip />} />
               <Bar dataKey="total" radius={[6, 6, 0, 0]} fill="url(#tealGrad)" />
               <defs>
                 <linearGradient id="tealGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#2dd4bf" />
-                  <stop offset="100%" stopColor="#0d9488" />
+                  <stop offset="0%" stopColor="#3b82f6" />
+                  <stop offset="100%" stopColor="#1d4ed8" />
                 </linearGradient>
               </defs>
             </BarChart>
@@ -225,13 +236,13 @@ export default function Dashboard({ esAdmin, session }) {
         </div>
 
         {/* Panel derecho */}
-        <div className="rounded-2xl p-5" style={glass}>
+        <div className="rounded-2xl p-5" style={{ background: 'var(--bg-card)', border: '1px solid var(--border-card)', backdropFilter: 'blur(10px)' }}>
           {/* Admin sin filtro: muestra top vendedores */}
           {esAdmin && !filtroVendedor ? (
             <>
-              <p className="text-xs font-medium mb-4" style={{ color: 'rgba(255,255,255,0.5)' }}>Top vendedores este mes</p>
+              <p className="text-xs font-medium mb-4" style={{ color: 'var(--text-secondary)' }}>Top vendedores este mes</p>
               {vendedoresTop.length === 0 ? (
-                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>Sin ventas este mes</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Sin ventas este mes</p>
               ) : (
                 <div className="space-y-3.5">
                   {vendedoresTop.map((v, i) => {
@@ -239,11 +250,11 @@ export default function Dashboard({ esAdmin, session }) {
                     return (
                       <div key={i}>
                         <div className="flex justify-between text-xs mb-1.5">
-                          <span className="truncate max-w-[130px]" style={{ color: 'rgba(255,255,255,0.6)' }}>{v.nombre}</span>
-                          <span style={{ color: 'rgba(255,255,255,0.3)' }}>S/ {Number(v.total).toFixed(2)}</span>
+                          <span className="truncate max-w-[130px]" style={{ color: 'var(--text-primary)' }}>{v.nombre}</span>
+                          <span style={{ color: 'var(--text-muted)' }}>S/ {Number(v.total).toFixed(2)}</span>
                         </div>
-                        <div className="w-full rounded-full h-1" style={{ background: 'rgba(255,255,255,0.07)' }}>
-                          <div className="h-1 rounded-full" style={{ width: `${(v.total / max) * 100}%`, background: 'linear-gradient(90deg, #7c3aed, #a78bfa)' }} />
+                        <div className="w-full rounded-full h-1" style={{ background: 'var(--border-card)' }}>
+                          <div className="h-1 rounded-full" style={{ width: `${(v.total / max) * 100}%`, background: 'var(--accent-gradient)' }} />
                         </div>
                       </div>
                     )
@@ -254,9 +265,9 @@ export default function Dashboard({ esAdmin, session }) {
           ) : (
             /* Vendedor o admin con filtro: muestra top productos */
             <>
-              <p className="text-xs font-medium mb-4" style={{ color: 'rgba(255,255,255,0.5)' }}>Top productos este mes</p>
+              <p className="text-xs font-medium mb-4" style={{ color: 'var(--text-secondary)' }}>Top productos este mes</p>
               {productosTop.length === 0 ? (
-                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.25)' }}>Sin ventas este mes</p>
+                <p className="text-xs" style={{ color: 'var(--text-muted)' }}>Sin ventas este mes</p>
               ) : (
                 <div className="space-y-3.5">
                   {productosTop.map((p, i) => {
@@ -264,11 +275,11 @@ export default function Dashboard({ esAdmin, session }) {
                     return (
                       <div key={i}>
                         <div className="flex justify-between text-xs mb-1.5">
-                          <span className="truncate max-w-[130px]" style={{ color: 'rgba(255,255,255,0.6)' }}>{p.nombre}</span>
-                          <span style={{ color: 'rgba(255,255,255,0.3)' }}>{p.cantidad} und.</span>
+                          <span className="truncate max-w-[130px]" style={{ color: 'var(--text-primary)' }}>{p.nombre}</span>
+                          <span style={{ color: 'var(--text-muted)' }}>{p.cantidad} und.</span>
                         </div>
-                        <div className="w-full rounded-full h-1" style={{ background: 'rgba(255,255,255,0.07)' }}>
-                          <div className="h-1 rounded-full" style={{ width: `${(p.cantidad / max) * 100}%`, background: 'linear-gradient(90deg, #0d9488, #2dd4bf)' }} />
+                        <div className="w-full rounded-full h-1" style={{ background: 'var(--border-card)' }}>
+                          <div className="h-1 rounded-full" style={{ width: `${(p.cantidad / max) * 100}%`, background: 'var(--accent-gradient)' }} />
                         </div>
                       </div>
                     )
@@ -283,9 +294,9 @@ export default function Dashboard({ esAdmin, session }) {
       {/* Stock bajo — solo admin */}
       {esAdmin && stats.stockBajo > 0 && (
         <div className="rounded-2xl p-4 flex items-center gap-3"
-          style={{ background: 'rgba(251,113,133,0.08)', border: '1px solid rgba(251,113,133,0.2)' }}>
+          style={{ background: 'var(--danger-bg)', border: '1px solid var(--danger-border)' }}>
           <AlertTriangle size={16} style={{ color: '#fb7185', flexShrink: 0 }} />
-          <p className="text-xs" style={{ color: 'rgba(255,255,255,0.6)' }}>
+          <p className="text-xs" style={{ color: 'var(--text-primary)' }}>
             Hay <span style={{ color: '#fb7185', fontWeight: 600 }}>{stats.stockBajo} producto{stats.stockBajo > 1 ? 's' : ''}</span> con stock bajo. Revisa el inventario.
           </p>
         </div>

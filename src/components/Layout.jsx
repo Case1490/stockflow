@@ -4,11 +4,13 @@ import { LayoutDashboard, Package, ShoppingCart, LogOut, UserCircle, Users } fro
 import { Toaster } from 'react-hot-toast'
 import InstallPWA from './InstallPWA'
 import { useEffect, useState } from 'react'
+import { useTema } from '../context/ThemeContext'
 
 export default function Layout({ session, rol }) {
   const navigate = useNavigate()
   const [isMobile, setIsMobile] = useState(window.innerWidth < 768)
   const esAdmin = rol === 'admin'
+  const { isDark } = useTema()
 
   useEffect(() => {
     const handler = () => setIsMobile(window.innerWidth < 768)
@@ -31,17 +33,17 @@ export default function Layout({ session, rol }) {
 
   const SidebarContent = () => (
     <>
-      <div style={{ padding: '0 12px 16px', marginBottom: '8px', borderBottom: '1px solid rgba(255,255,255,0.08)' }}>
+      <div style={{ padding: '0 12px 16px', marginBottom: '8px', borderBottom: `1px solid var(--border-sidebar)` }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '10px' }}>
           <img src="/icons/icon-192.png" alt="StockFlow" style={{ width: '28px', height: '28px', borderRadius: '8px', objectFit: 'cover' }} />
           <div>
-            <span style={{ fontSize: '13px', fontWeight: 600, color: '#fff', display: 'block' }}>StockFlow</span>
-            <span style={{ fontSize: '10px', color: esAdmin ? '#2dd4bf' : 'rgba(255,255,255,0.35)' }}>
+            <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)', display: 'block' }}>StockFlow</span>
+            <span style={{ fontSize: '10px', color: 'var(--accent-light)' }}>
               {esAdmin ? 'Administrador' : 'Vendedor'}
             </span>
           </div>
         </div>
-        <p style={{ fontSize: '11px', color: 'rgba(255,255,255,0.35)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.user.email}</p>
+        <p style={{ fontSize: '11px', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{session.user.email}</p>
       </div>
 
       <nav style={{ flex: 1, display: 'flex', flexDirection: 'column', gap: '2px' }}>
@@ -52,21 +54,21 @@ export default function Layout({ session, rol }) {
               padding: '10px 12px', borderRadius: '12px', fontSize: '12px',
               fontWeight: 500, textDecoration: 'none', transition: 'all 0.2s',
               ...(isActive
-                ? { background: 'rgba(45,212,191,0.15)', color: '#2dd4bf', border: '1px solid rgba(45,212,191,0.25)' }
-                : { color: 'rgba(255,255,255,0.45)', border: '1px solid transparent' })
+                ? { background: 'var(--bg-nav-active)', color: 'var(--text-nav-active)', border: `1px solid var(--border-nav-active)` }
+                : { color: 'var(--text-nav-idle)', border: '1px solid transparent' })
             })}>
             {item.icon}{item.label}
           </NavLink>
         ))}
       </nav>
 
-      <div style={{ paddingTop: '12px', borderTop: '1px solid rgba(255,255,255,0.08)' }}>
+      <div style={{ paddingTop: '12px', borderTop: `1px solid var(--border-sidebar)` }}>
         <button onClick={handleLogout} style={{
           display: 'flex', alignItems: 'center', gap: '10px', padding: '10px 12px',
           width: '100%', borderRadius: '12px', fontSize: '12px', background: 'transparent',
-          border: 'none', color: 'rgba(251,113,133,0.6)', cursor: 'pointer'
+          border: 'none', color: 'var(--danger)', cursor: 'pointer'
         }}
-          onMouseEnter={e => e.currentTarget.style.background = 'rgba(251,113,133,0.1)'}
+          onMouseEnter={e => e.currentTarget.style.background = 'var(--danger-bg)'}
           onMouseLeave={e => e.currentTarget.style.background = 'transparent'}>
           <LogOut size={15} /> Cerrar sesión
         </button>
@@ -75,22 +77,24 @@ export default function Layout({ session, rol }) {
   )
 
   return (
-    <div style={{ display: 'flex', height: '100dvh', background: 'linear-gradient(135deg, #0f0c29, #1a1040, #24243e)' }}>
+    <div style={{ display: 'flex', height: '100dvh', background: 'var(--bg-app)' }}>
       <Toaster position="top-right" toastOptions={{
         style: {
           borderRadius: '12px', fontSize: '13px', padding: '12px 16px',
-          background: 'rgba(255,255,255,0.1)', backdropFilter: 'blur(20px)',
-          color: '#fff', border: '1px solid rgba(255,255,255,0.15)'
+          background: isDark ? 'rgba(255,255,255,0.1)' : '#fff',
+          backdropFilter: 'blur(20px)',
+          color: 'var(--text-primary)',
+          border: `1px solid var(--border-card)`
         },
-        success: { iconTheme: { primary: '#2dd4bf', secondary: '#0f0c29' } },
-        error: { iconTheme: { primary: '#fb7185', secondary: '#0f0c29' } },
+        success: { iconTheme: { primary: '#3b82f6', secondary: isDark ? '#050d1a' : '#fff' } },
+        error: { iconTheme: { primary: 'var(--danger)', secondary: isDark ? '#050d1a' : '#fff' } },
       }} />
 
       {!isMobile && (
         <aside style={{
           width: '224px', flexShrink: 0, display: 'flex', flexDirection: 'column',
-          padding: '20px 12px', background: 'rgba(255,255,255,0.05)',
-          borderRight: '1px solid rgba(255,255,255,0.08)'
+          padding: '20px 12px', background: 'var(--bg-sidebar)',
+          borderRight: `1px solid var(--border-sidebar)`
         }}>
           <SidebarContent />
         </aside>
@@ -100,14 +104,14 @@ export default function Layout({ session, rol }) {
         {isMobile && (
           <div style={{
             display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-            padding: '12px 16px', background: 'rgba(255,255,255,0.05)',
-            borderBottom: '1px solid rgba(255,255,255,0.08)', flexShrink: 0
+            padding: '12px 16px', background: 'var(--bg-sidebar)',
+            borderBottom: `1px solid var(--border-sidebar)`, flexShrink: 0
           }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <img src="/icons/icon-192.png" alt="StockFlow" style={{ width: '28px', height: '28px', borderRadius: '8px', objectFit: 'cover' }} />
-              <span style={{ fontSize: '13px', fontWeight: 600, color: '#fff' }}>StockFlow</span>
+              <span style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-primary)' }}>StockFlow</span>
             </div>
-            <button onClick={handleLogout} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'rgba(251,113,133,0.6)' }}>
+            <button onClick={handleLogout} style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--danger)' }}>
               <LogOut size={16} />
             </button>
           </div>
@@ -123,7 +127,8 @@ export default function Layout({ session, rol }) {
           <nav style={{
             position: 'fixed', bottom: 0, left: 0, right: 0,
             display: 'flex', zIndex: 40,
-            background: 'rgba(15,12,41,0.97)', borderTop: '1px solid rgba(255,255,255,0.08)',
+            background: 'var(--bg-sidebar)',
+            borderTop: `1px solid var(--border-sidebar)`,
             backdropFilter: 'blur(20px)'
           }}>
             {navItems.map(item => (
@@ -132,7 +137,7 @@ export default function Layout({ session, rol }) {
                   flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center',
                   justifyContent: 'center', padding: '10px 0', gap: '4px',
                   textDecoration: 'none', fontSize: '10px', transition: 'all 0.2s',
-                  color: isActive ? '#2dd4bf' : 'rgba(255,255,255,0.35)'
+                  color: isActive ? 'var(--text-nav-active)' : 'var(--text-nav-idle)'
                 })}>
                 {item.icon}
                 <span>{item.label}</span>
